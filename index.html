@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mom's Farm</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <header class="game-header">
+      <button id="rankingButton" class="ranking-button" type="button" aria-label="&#47021;&#53433;">&#47021;&#53433;</button>
+      <button id="newsToggleButton" class="news-toggle-button" type="button" aria-label="&#46041;&#45348;&#45684;&#49828;" aria-expanded="false">TV</button>
+      <p class="eyebrow">mobile farm prototype</p>
+      <h1>Mom's Farm</h1>
+      <p class="subtitle">&#48173;&#51012; &#45580;&#47084; &#51089;&#47932;&#51012; &#49900;&#44256;, &#51088;&#46972;&#47732; &#49688;&#54869;&#54616;&#49464;&#50836;.</p>
+    </header>
+
+    <section class="status-card" aria-label="&#45453;&#51109; &#49345;&#53468;">
+      <div>
+        <span class="label">&#44264;&#46300;</span>
+        <strong id="gold">0</strong>
+      </div>
+      <div>
+        <span class="label">&#47112;&#48296;</span>
+        <strong id="playerLevelText">Lv.1</strong>
+        <span id="playerExpText" class="exp-text">0 / 20</span>
+      </div>
+      <div>
+        <span class="label">&#54788;&#51116; &#54665;&#46041;</span>
+        <strong id="statusText">&#48173;&#51012; &#49440;&#53469;&#54616;&#49464;&#50836;</strong>
+      </div>
+    </section>
+
+    <section id="newsCard" class="news-card" aria-label="&#46041;&#45348;&#45684;&#49828;">
+      <div class="section-title">
+        <h2>&#46041;&#45348;&#45684;&#49828;</h2>
+        <span id="todayText"></span>
+      </div>
+      <div id="weatherPanel" class="weather-panel"></div>
+      <div id="newsList" class="news-list"></div>
+    </section>
+
+    <section id="farmScreen" class="farm-card screen active" aria-label="&#48173;">
+      <div class="section-title">
+        <h2 id="farmSectionTitle">&#48173;</h2>
+        <span id="farmSectionHint">&#48712; &#48173;&#51012; &#45572;&#47476;&#47732; &#51089;&#47932;&#51012; &#44256;&#47484; &#49688; &#51080;&#50612;&#50836;</span>
+      </div>
+      <div id="plotView" class="farm-inner-view active">
+        <div id="plotExpansionPanel" class="plot-expansion-panel"></div>
+        <div id="farmGrid" class="farm-grid"></div>
+      </div>
+      <div id="animalView" class="farm-inner-view">
+        <div id="animalGrid" class="farm-grid farm-place-grid"></div>
+      </div>
+      <div id="processingView" class="farm-inner-view">
+        <div id="processingGrid" class="farm-grid farm-place-grid"></div>
+      </div>
+    </section>
+
+    <section id="inventoryScreen" class="inventory-card screen" aria-label="&#44032;&#48169;">
+      <div class="section-title">
+        <h2>&#44032;&#48169;</h2>
+        <span>&#54032;&#47588;&#54624; &#51089;&#47932;&#51012; &#45572;&#47476;&#49464;&#50836;</span>
+      </div>
+      <div id="inventoryGrid" class="inventory-grid"></div>
+      <div id="sellPanel" class="sell-panel"></div>
+    </section>
+
+    <section id="upgradeScreen" class="upgrade-card screen" aria-label="&#50629;&#44536;&#47112;&#51060;&#46300;">
+      <div class="section-title">
+        <h2>&#50629;&#44536;&#47112;&#51060;&#46300;</h2>
+        <span>&#48173;&#51012; &#44256;&#47476;&#44256; &#50629;&#44536;&#47112;&#51060;&#46300;&#47484; &#49440;&#53469;&#54616;&#49464;&#50836;</span>
+      </div>
+      <div id="upgradeGrid" class="upgrade-grid"></div>
+      <button id="unlockCropButton" class="global-upgrade-button" type="button"></button>
+    </section>
+
+    <nav class="bottom-nav" aria-label="&#54616;&#45800; &#47700;&#45684;">
+      <div id="farmSubNav" class="farm-subnav" aria-label="&#45453;&#51109; &#47700;&#45684;">
+        <button class="farm-sub-button active" data-farm-section="plots" type="button">&#48173;</button>
+        <button class="farm-sub-button" data-farm-section="animals" type="button">&#46041;&#47932;</button>
+        <button class="farm-sub-button" data-farm-section="processing" type="button">&#44032;&#44277;</button>
+      </div>
+      <button class="nav-button active" data-tab="farm" aria-label="&#45453;&#51109;">
+        <span>&#45453;&#51109;</span>
+      </button>
+      <button class="nav-button" data-tab="inventory" aria-label="&#44032;&#48169;">
+        <span>&#44032;&#48169;</span>
+      </button>
+      <button class="nav-button" data-tab="upgrade" aria-label="&#50629;&#44536;&#47112;&#51060;&#46300;">
+        <span>&#50629;&#44536;&#47112;&#51060;&#46300;</span>
+      </button>
+    </nav>
+  </main>
+
+  <div id="cropSheet" class="crop-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-sheet></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="cropSheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">plant crop</p>
+          <h2 id="cropSheetTitle">&#49900;&#51012; &#51089;&#47932; &#49440;&#53469;</h2>
+        </div>
+        <button class="icon-button" data-close-sheet aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="cropOptions" class="crop-options"></div>
+      <button id="plantAllButton" class="plant-all-button" type="button"></button>
+    </section>
+  </div>
+
+  <div id="upgradeSheet" class="crop-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-upgrade-sheet></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="upgradeSheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">plot upgrade</p>
+          <h2 id="upgradeSheetTitle">&#48173; &#50629;&#44536;&#47112;&#51060;&#46300;</h2>
+        </div>
+        <button class="icon-button" data-close-upgrade-sheet aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="upgradeOptions" class="crop-options"></div>
+    </section>
+  </div>
+
+  <div id="buildingSheet" class="crop-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-building-sheet></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="buildingSheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">processing building</p>
+          <h2 id="buildingSheetTitle">&#44148;&#47932; &#49440;&#53469;</h2>
+        </div>
+        <button class="icon-button" data-close-building-sheet aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="buildingOptions" class="crop-options"></div>
+    </section>
+  </div>
+
+  <div id="animalSheet" class="crop-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-animal-sheet></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="animalSheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">animal</p>
+          <h2 id="animalSheetTitle">&#46041;&#47932;</h2>
+        </div>
+        <button class="icon-button" data-close-animal-sheet aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="animalOptions" class="crop-options"></div>
+    </section>
+  </div>
+
+  <div id="processingSheet" class="crop-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-processing-sheet></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="processingSheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">processing</p>
+          <h2 id="processingSheetTitle">&#44032;&#44277;</h2>
+        </div>
+        <button class="icon-button" data-close-processing-sheet aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="processingOptions" class="crop-options"></div>
+    </section>
+  </div>
+
+  <div id="confirmDialog" class="confirm-dialog" aria-hidden="true">
+    <section class="confirm-card" role="dialog" aria-modal="true">
+      <p id="confirmMessage">&#51221;&#47568;&#47196; &#51060; &#44148;&#47932;&#51012; &#52384;&#44144;&#54616;&#49884;&#44192;&#49845;&#45768;&#44620;?</p>
+      <div class="confirm-actions">
+        <button id="confirmCancelButton" class="secondary-button" type="button">&#52712;&#49548;</button>
+        <button id="confirmOkButton" class="danger-button" type="button">&#54869;&#51064;</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="rankingPopup" class="ranking-popup" aria-hidden="true">
+    <section class="ranking-card" role="dialog" aria-modal="true" aria-labelledby="rankingTitle">
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">ranking</p>
+          <h2 id="rankingTitle">&#47021;&#53433;</h2>
+        </div>
+        <button id="rankingCloseButton" class="icon-button" type="button" aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <label class="ranking-name-label">
+        <span>&#51060;&#47492;</span>
+        <input id="rankingNameInput" type="text" maxlength="12" placeholder="Mom" />
+      </label>
+      <div class="ranking-actions">
+        <button id="rankingSubmitButton" class="small-button" type="button">&#51216;&#49688; &#46321;&#47197;</button>
+        <button id="rankingRefreshButton" class="secondary-button" type="button" hidden>&#49352;&#47196;&#44256;&#52840;</button>
+      </div>
+      <p id="rankingStatusText" class="empty-sell-text"></p>
+      <ol id="rankingList" class="ranking-list"></ol>
+    </section>
+  </div>
+
+  <div id="levelUpPopup" class="level-up-popup" aria-hidden="true">
+    <button id="levelUpPopupButton" class="level-up-card" type="button">
+      <span class="level-up-kicker">&#47112;&#48296;&#50629;!</span>
+      <strong id="levelUpLevelText">Lv.2</strong>
+      <span id="levelUpUnlockText"></span>
+      <small>&#45572;&#47476;&#47732; &#45803;&#54784;&#50836;</small>
+    </button>
+  </div>
+
+  <script src="script.js"></script>
+  <script type="module" src="firebase-ranking.js"></script>
+</body>
+</html>
