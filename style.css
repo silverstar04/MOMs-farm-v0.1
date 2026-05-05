@@ -663,10 +663,11 @@ h1 {
   justify-self: center;
   width: fit-content;
   padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(47, 34, 24, 0.46);
+  border-radius: 0;
+  background: transparent;
   font-size: 12px;
   font-weight: 800;
+  text-shadow: 0 1px 3px rgba(35, 21, 10, 0.8);
 }
 
 .upgrade-plot-name {
@@ -779,6 +780,29 @@ h1 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
   font-size: 18px;
+}
+
+.processing-repeat-control {
+  display: grid;
+  grid-template-columns: 1fr 136px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid #d7dfcf;
+  border-radius: 8px;
+  background: #f8fbf4;
+  color: #30402d;
+  font-weight: 900;
+}
+
+.processing-repeat-control .quantity-stepper {
+  grid-template-columns: 38px 1fr 38px;
+  gap: 5px;
+}
+
+.processing-repeat-control .quantity-stepper button,
+.processing-repeat-control .quantity-stepper strong {
+  min-height: 38px;
 }
 
 .small-button {
@@ -1084,6 +1108,10 @@ h1 {
   background: #2f7f73;
   color: #ffffff;
   font-weight: 900;
+}
+
+.global-upgrade-button[hidden] {
+  display: none;
 }
 
 .global-upgrade-button:disabled {

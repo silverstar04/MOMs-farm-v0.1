@@ -26,10 +26,10 @@
  seedCost: "\uC528\uC557\uAC12",
  free: "\uBB34\uB8CC",
  maxUpgrade: "\uCD5C\uB300 \uB808\uBCA8",
- upgradeSpeed: "\uC131\uC7A5\uC18D\uB3C4 \uC99D\uAC00",
+ upgradeSpeed: "\uC131\uC7A5 \uB300\uAE30\uC2DC\uAC04 \uAC10\uC18C",
  upgradeYield: "\uC218\uD655\uB7C9 \uC99D\uAC00",
  upgradeSeed: "\uC528\uC557 \uAD6C\uB9E4 \uBE44\uC6A9 \uAC10\uC18C",
- speedLevel: "\uC18D\uB3C4",
+ speedLevel: "\uBC2D \uB808\uBCA8",
  yieldLevel: "\uC218\uD655\uB7C9",
  seedLevel: "\uC528\uC557\uD560\uC778",
  cost: "\uBE44\uC6A9",
@@ -67,6 +67,11 @@
  cancel: "\uCDE8\uC18C",
  collect: "\uC218\uB839",
  processing: "\uAC00\uACF5 \uC911",
+ repeat: "\uBC18\uBCF5",
+ make: "\uB9CC\uB4E4\uAE30",
+ need: "\uD544\uC694",
+ time: "\uC2DC\uAC04",
+ cancelProduction: "\uC0DD\uC0B0 \uCDE8\uC18C",
  feed: "\uC0AC\uB8CC \uC8FC\uAE30",
  remove: "\uC81C\uAC70",
 };
@@ -106,9 +111,9 @@ const crops = [
   image: "assets/crops/carrot.png",
   growSeconds: 20,
   baseHarvest: 3,
-  sellPrice: 5,
+  sellPrice: 6,
   minPrice: 3,
-  maxPrice: 8,
+  maxPrice: 10,
   seedCost: 2,
   preferredWeather: "rainy",
   marketSwing: 0.34,
@@ -120,9 +125,9 @@ const crops = [
   image: "assets/crops/tomato.png",
   growSeconds: 30,
   baseHarvest: 2,
-  sellPrice: 8,
-  minPrice: 6,
-  maxPrice: 13,
+  sellPrice: 10,
+  minPrice: 7,
+  maxPrice: 16,
   seedCost: 4,
   preferredWeather: "sunny",
   marketSwing: 0.42,
@@ -134,9 +139,9 @@ const crops = [
   image: "assets/crops/eggplant.png",
   growSeconds: 42,
   baseHarvest: 1,
-  sellPrice: 18,
-  minPrice: 12,
-  maxPrice: 28,
+  sellPrice: 24,
+  minPrice: 16,
+  maxPrice: 36,
   seedCost: 6,
   preferredWeather: "rainy",
   marketSwing: 0.5,
@@ -148,9 +153,9 @@ const crops = [
   image: "assets/crops/pimento.png",
   growSeconds: 54,
   baseHarvest: 1,
-  sellPrice: 26,
-  minPrice: 18,
-  maxPrice: 40,
+  sellPrice: 32,
+  minPrice: 22,
+  maxPrice: 50,
   seedCost: 9,
   preferredWeather: "sunny",
   marketSwing: 0.55,
@@ -159,7 +164,12 @@ const crops = [
 ];
 
 const saveKey = "moms-farm-save-v1";
+const backgroundMusicTracks = [
+ "assets/audio/patchwork-harvest-1.mp3",
+ "assets/audio/patchwork-harvest-2.mp3",
+];
 const maxPlotCount = 6;
+const maxPlotUpgradeLevel = 5;
 const startingPlotCount = 2;
 const defaultUnlockedCropIds = ["wheat"];
 const cropProgression = [
@@ -175,9 +185,9 @@ const products = [
   id: "flour",
  name: "\uBC00\uAC00\uB8E8",
  image: "assets/products/flour.png",
- sellPrice: 9,
+ sellPrice: 10,
  minPrice: 8,
- maxPrice: 11,
+ maxPrice: 13,
  marketSwing: 0.12,
  oversupplyBase: 18,
 },
@@ -185,9 +195,9 @@ const products = [
  id: "cowFeed",
  name: "\uC18C \uC0AC\uB8CC",
  image: "assets/products/feedstuff_cow.png",
- sellPrice: 7,
+ sellPrice: 8,
  minPrice: 6,
- maxPrice: 8,
+ maxPrice: 10,
  marketSwing: 0.1,
  oversupplyBase: 22,
 },
@@ -195,31 +205,31 @@ const products = [
  id: "henFeed",
  name: "\uB2ED \uC0AC\uB8CC",
  image: "assets/products/feedstuff_hen.png",
- sellPrice: 6,
- minPrice: 5,
- maxPrice: 7,
+ sellPrice: 9,
+ minPrice: 7,
+ maxPrice: 11,
  marketSwing: 0.1,
  oversupplyBase: 24,
 },
 {
  id: "egg",
- name: "\uACC4\uB780",
+ name: "\uB2EC\uAC40",
  image: "assets/animal-products/egg.png",
- sellPrice: 12,
- minPrice: 10,
- maxPrice: 14,
+ sellPrice: 22,
+ minPrice: 16,
+ maxPrice: 30,
  marketSwing: 0.12,
- oversupplyBase: 16,
+ oversupplyBase: 12,
 },
 {
  id: "milk",
  name: "\uC6B0\uC720",
  image: "assets/animal-products/milk.png",
- sellPrice: 18,
- minPrice: 16,
- maxPrice: 21,
+ sellPrice: 34,
+ minPrice: 26,
+ maxPrice: 46,
  marketSwing: 0.1,
- oversupplyBase: 12,
+ oversupplyBase: 8,
 },
 ];
 const animals = [
@@ -366,6 +376,8 @@ function createEmptyProcessingSlot() {
  return {
   buildingId: null,
   recipeId: null,
+  repeatCount: 1,
+  totalSeconds: null,
   startedAt: null,
   readyAt: null,
  };
@@ -584,6 +596,12 @@ function sanitizeLevel(level) {
  return Math.min(3, Math.max(1, cleanLevel));
 }
 
+function sanitizePlotUpgradeLevel(level) {
+ const cleanLevel = Math.floor(Number(level));
+ if (!Number.isFinite(cleanLevel)) return 1;
+ return Math.min(maxPlotUpgradeLevel, Math.max(1, cleanLevel));
+}
+
 function sanitizeTile(tile) {
  if (!tile || typeof tile !== "object") {
   return createEmptyTile();
@@ -591,9 +609,9 @@ function sanitizeTile(tile) {
 
  const crop = getCrop(tile.cropId);
  const state = ["empty", "growing", "ready"].includes(tile.state) ? tile.state : "empty";
- const yieldLevel = sanitizeLevel(tile.yieldLevel ?? tile.multiplier);
- const speedLevel = sanitizeLevel(tile.speedLevel);
- const seedLevel = sanitizeLevel(tile.seedLevel);
+ const yieldLevel = 1;
+ const speedLevel = sanitizePlotUpgradeLevel(tile.speedLevel);
+ const seedLevel = 1;
 
  if (state === "empty" || !crop) {
   return {
@@ -627,12 +645,26 @@ function sanitizeProcessingSlot(slot) {
   return createEmptyProcessingSlot();
  }
 
+ const repeatCount = sanitizeProcessingRepeatCount(slot.repeatCount);
+ const startedAt = Number.isFinite(slot.startedAt) ? slot.startedAt : null;
+ const readyAt = Number.isFinite(slot.readyAt) ? slot.readyAt : null;
+ const savedTotalSeconds = Math.ceil(Number(slot.totalSeconds));
+ const fallbackTotalSeconds = startedAt && readyAt ? Math.max(1, Math.ceil((readyAt - startedAt) / 1000)) : null;
+
  return {
   buildingId: building.id,
   recipeId: recipe && recipe.buildingId === building.id ? recipe.id : null,
-  startedAt: Number.isFinite(slot.startedAt) ? slot.startedAt : null,
-  readyAt: Number.isFinite(slot.readyAt) ? slot.readyAt : null,
+  repeatCount,
+  totalSeconds: Number.isFinite(savedTotalSeconds) && savedTotalSeconds > 0 ? savedTotalSeconds : fallbackTotalSeconds,
+  startedAt,
+  readyAt,
  };
+}
+
+function sanitizeProcessingRepeatCount(value) {
+ const count = Math.floor(Number(value));
+ if (!Number.isFinite(count)) return 1;
+ return Math.min(10, Math.max(1, count));
 }
 
 function sanitizeAnimalSlot(slot) {
@@ -749,6 +781,7 @@ const game = loadGame();
 const ui = {
  selectedSellCropId: null,
  sellQuantity: 1,
+ processingRepeatCount: 1,
  holdTimer: null,
  holdRepeatTimer: null,
  holdRepeatCount: 0,
@@ -917,7 +950,7 @@ function getAverageMarketPrice(item) {
 }
 
 function getHarvestAmount(crop, tile) {
- return crop.baseHarvest * tile.yieldLevel;
+ return crop.baseHarvest;
 }
 
 function getUnlockedCrops() {
@@ -971,6 +1004,35 @@ function preloadGameImages() {
  });
 }
 
+const backgroundMusic = new Audio();
+backgroundMusic.preload = "auto";
+backgroundMusic.volume = 0.42;
+
+function getRandomMusicTrack() {
+ return backgroundMusicTracks[Math.floor(Math.random() * backgroundMusicTracks.length)];
+}
+
+function playRandomBackgroundMusic() {
+ backgroundMusic.src = getRandomMusicTrack();
+ backgroundMusic.currentTime = 0;
+ backgroundMusic.play().catch(() => {
+  // Mobile browsers allow music only after a user gesture.
+ });
+}
+
+function startBackgroundMusic() {
+ if (!backgroundMusic.paused) return;
+ playRandomBackgroundMusic();
+}
+
+function bindBackgroundMusicStart() {
+ ["pointerdown", "touchstart", "click", "keydown"].forEach((eventName) => {
+  window.addEventListener(eventName, startBackgroundMusic, { once: true, passive: true });
+ });
+
+ backgroundMusic.addEventListener("ended", playRandomBackgroundMusic);
+}
+
 function getRemainingSeconds(tile) {
  if (!tile.readyAt) return 0;
  return Math.max(0, Math.ceil((tile.readyAt - Date.now()) / 1000));
@@ -979,8 +1041,10 @@ function getRemainingSeconds(tile) {
 function getAdjustedGrowSeconds(crop, tile) {
  const speedRates = {
   1: 1,
-  2: 0.8,
-  3: 0.6,
+  2: 0.9,
+  3: 0.8,
+  4: 0.7,
+  5: 0.6,
  };
 
  return Math.max(1, Math.ceil(crop.growSeconds * speedRates[tile.speedLevel] * getWeatherTimeRate(crop)));
@@ -998,15 +1062,32 @@ function getAdjustedProcessingSeconds(recipe) {
  return recipe.seconds;
 }
 
-function getWeatherTimeRate(crop) {
+function getProcessingRepeatCount(slot) {
+ return sanitizeProcessingRepeatCount(slot?.repeatCount ?? ui.processingRepeatCount);
+}
+
+function getProcessingOutputQuantity(recipe, repeatCount) {
+ return recipe.outputQuantity * repeatCount;
+}
+
+function getProcessingInputQuantity(recipe, repeatCount) {
+ return recipe.inputQuantity * repeatCount;
+}
+
+function getProcessingTotalSeconds(recipe, repeatCount) {
+ return getAdjustedProcessingSeconds(recipe) * repeatCount;
+}
+
+function getWeatherTimeRate(item) {
  if (!isWeatherSystemUnlocked()) return 1;
  if (game.daily.weatherId === "cloudy") return 1;
- if (crop.preferredWeather === game.daily.weatherId) return 0.8;
+ if (!item?.preferredWeather) return 1;
+ if (item.preferredWeather === game.daily.weatherId) return 0.8;
  return 1.25;
 }
 
-function getWeatherTimeLabel(crop) {
- const rate = getWeatherTimeRate(crop);
+function getWeatherTimeLabel(item) {
+ const rate = getWeatherTimeRate(item);
  if (rate < 1) return text.weatherBonus;
  if (rate > 1) return text.weatherPenalty;
  return "";
@@ -1075,20 +1156,11 @@ function getUnlockLabel(unlock) {
 }
 
 function getSeedCost(crop, tile) {
- const discountRates = {
-  1: 0,
-  2: 0.2,
-  3: 0.4,
- };
-
- return Math.max(0, Math.ceil(crop.seedCost * (1 - discountRates[tile.seedLevel])));
+ return crop.seedCost;
 }
 
 function getPlotLevel(tile) {
- const levelSum = tile.speedLevel + tile.yieldLevel + tile.seedLevel;
- const averageLevel = levelSum / 3;
- const imageLevel = Math.round(((averageLevel - 1) / 2) * 4) + 1;
- return Math.min(5, Math.max(1, imageLevel));
+ return sanitizePlotUpgradeLevel(tile.speedLevel);
 }
 
 function getPlotImage(tile) {
@@ -1372,7 +1444,7 @@ function renderFarm() {
   if (tile.state === "empty") {
    button.innerHTML = `
     <span class="tile-icon">+</span>
-    <span class="tile-multiplier">x${tile.yieldLevel}</span>
+    <span class="tile-multiplier">Lv.${tile.speedLevel}</span>
     <span class="tile-label">${text.plant}</span>
    `;
    button.setAttribute("aria-label", `${index + 1}${text.plot}, ${text.emptyPlot}`);
@@ -1383,7 +1455,7 @@ function renderFarm() {
    const progress = 1 - remainingSeconds / growSeconds;
    button.style.setProperty("--progress", `${Math.max(0, Math.min(1, progress)) * 100}%`);
    button.innerHTML = `
-    <span class="tile-multiplier">x${tile.yieldLevel}</span>
+    <span class="tile-multiplier">Lv.${tile.speedLevel}</span>
     ${cropImage(crop, "tile-crop-image")}
     <span class="tile-label" data-tile-label>${formatDuration(remainingSeconds)}</span>
    `;
@@ -1392,7 +1464,7 @@ function renderFarm() {
 
   if (tile.state === "ready" && crop) {
    button.innerHTML = `
-    <span class="tile-multiplier">x${tile.yieldLevel}</span>
+    <span class="tile-multiplier">Lv.${tile.speedLevel}</span>
     <span class="ready-bounce">${cropImage(crop, "tile-crop-image")}</span>
     <span class="tile-label" data-tile-label>${text.harvest}</span>
    `;
@@ -1440,9 +1512,9 @@ function renderPlaceGrid(grid, sectionId) {
   } else if (sectionId === "processing" && isUnlocked) {
    if (building) {
     button.classList.add("installed");
-    button.innerHTML = `
+   button.innerHTML = `
      <img class="place-building-image" src="${building.image}" alt="${building.name}" loading="eager" decoding="async" />
-     <span data-place-label>${isReady ? text.collect : recipe ? formatDuration(getRemainingSeconds(slot)) : building.name}</span>
+     <span data-place-label>${isReady ? text.collect : recipe ? `${formatDuration(getRemainingSeconds(slot))} · x${getProcessingRepeatCount(slot)}` : building.name}</span>
     `;
    } else {
     button.innerHTML = `<span>+ ${text.install}</span>`;
@@ -1521,7 +1593,7 @@ function updatePlaceTimerGrid(grid, sectionId) {
   label.textContent = slot.readyAt && Date.now() >= slot.readyAt
    ? text.collect
    : recipe
-    ? formatDuration(getRemainingSeconds(slot))
+    ? `${formatDuration(getRemainingSeconds(slot))} · x${getProcessingRepeatCount(slot)}`
     : building.name;
  });
 }
@@ -1734,6 +1806,7 @@ function installProcessingBuilding(buildingId) {
 
 function openProcessingSheet(index) {
  game.selectedProcessingIndex = index;
+ ui.processingRepeatCount = 1;
  processingSheet.classList.add("open");
  processingSheet.setAttribute("aria-hidden", "false");
  renderProcessingOptions();
@@ -1743,6 +1816,7 @@ function closeProcessingSheet() {
  processingSheet.classList.remove("open");
  processingSheet.setAttribute("aria-hidden", "true");
  game.selectedProcessingIndex = null;
+ ui.processingRepeatCount = 1;
 }
 
 function renderProcessingOptions() {
@@ -1755,37 +1829,59 @@ function renderProcessingOptions() {
 
  if (recipe) {
   const product = getProduct(recipe.outputId);
+  const repeatCount = getProcessingRepeatCount(slot);
+  const outputQuantity = getProcessingOutputQuantity(recipe, repeatCount);
   const ready = Date.now() >= slot.readyAt;
   processingOptions.innerHTML = `
    <div class="processing-status">
     ${product ? itemImage(product, "sell-crop-image") : ""}
     <div>
-     <strong>${product?.name || ""}</strong>
-     <span>${ready ? text.ready : `${text.processing} · ${formatDuration(getRemainingSeconds(slot))}`}</span>
-    </div>
+     <strong>${product?.name || ""} x${outputQuantity}</strong>
+     <span>${ready ? text.ready : `${product?.name || ""} x${outputQuantity} ${text.processing} · ${formatDuration(getRemainingSeconds(slot))}`}</span>
    </div>
-   <button id="collectProcessingButton" class="small-button" type="button" ${ready ? "" : "disabled"}>${text.collect}</button>
+   </div>
+   <button id="collectProcessingButton" class="small-button" type="button" ${ready ? "" : "disabled"}>${product?.name || ""} x${outputQuantity} ${text.collect}</button>
+   ${ready ? "" : `<button id="cancelProcessingButton" class="secondary-button" type="button">${text.cancelProduction}</button>`}
    <button id="demolishProcessingButton" class="danger-subtle-button" type="button">${text.demolish}</button>
   `;
   document.querySelector("#collectProcessingButton").addEventListener("click", collectProcessingProduct);
+  document.querySelector("#cancelProcessingButton")?.addEventListener("click", requestCancelProcessingProduct);
   document.querySelector("#demolishProcessingButton").addEventListener("click", requestDemolishProcessingBuilding);
   return;
  }
+
+ const repeatCount = sanitizeProcessingRepeatCount(ui.processingRepeatCount);
+ processingOptions.innerHTML = `
+  <div class="processing-repeat-control">
+   <span>${text.repeat}</span>
+   <div class="quantity-stepper">
+    <button id="decreaseProcessingRepeat" type="button" aria-label="-">&lt;</button>
+    <strong>${repeatCount}\uD68C</strong>
+    <button id="increaseProcessingRepeat" type="button" aria-label="+">&gt;</button>
+   </div>
+  </div>
+ `;
+
+ document.querySelector("#decreaseProcessingRepeat").addEventListener("click", () => changeProcessingRepeatCount(-1));
+ document.querySelector("#increaseProcessingRepeat").addEventListener("click", () => changeProcessingRepeatCount(1));
 
  building.recipeIds.forEach((recipeId) => {
   const itemRecipe = getProcessingRecipe(recipeId);
   const input = getInventoryItem(itemRecipe.inputId);
   const output = getProduct(itemRecipe.outputId);
-  const hasInput = (game.inventory[itemRecipe.inputId] || 0) >= itemRecipe.inputQuantity;
+  const inputQuantity = getProcessingInputQuantity(itemRecipe, repeatCount);
+  const outputQuantity = getProcessingOutputQuantity(itemRecipe, repeatCount);
+  const totalSeconds = getProcessingTotalSeconds(itemRecipe, repeatCount);
+  const hasInput = (game.inventory[itemRecipe.inputId] || 0) >= inputQuantity;
   const button = document.createElement("button");
   button.className = `crop-option${hasInput ? "" : " unaffordable"}`;
   button.type = "button";
   button.innerHTML = `
    <span class="crop-icon">${itemImage(output, "crop-option-image")}</span>
    <span class="crop-text">
-    <strong>${output.name}</strong>
-    <span>${input.name} ${itemRecipe.inputQuantity}\uAC1C → ${output.name} ${itemRecipe.outputQuantity}\uAC1C</span>
-    <span>${formatDuration(getAdjustedProcessingSeconds(itemRecipe))}</span>
+    <strong>${output.name} x${outputQuantity} ${text.make}</strong>
+    <span>${text.need}: ${input.name} ${inputQuantity}\uAC1C</span>
+    <span>${text.time}: ${formatDuration(totalSeconds)}</span>
    </span>
    <span class="crop-price">${text.processing}</span>
   `;
@@ -1801,26 +1897,37 @@ function renderProcessingOptions() {
  processingOptions.appendChild(demolishButton);
 }
 
+function changeProcessingRepeatCount(amount) {
+ ui.processingRepeatCount = Math.min(10, Math.max(1, sanitizeProcessingRepeatCount(ui.processingRepeatCount) + amount));
+ renderProcessingOptions();
+}
+
 function startProcessingRecipe(recipeId) {
  const index = game.selectedProcessingIndex;
  const slot = game.processingSlots[index];
  const recipe = getProcessingRecipe(recipeId);
  if (index === null || !slot || !recipe) return;
 
- if ((game.inventory[recipe.inputId] || 0) < recipe.inputQuantity) {
+ const repeatCount = sanitizeProcessingRepeatCount(ui.processingRepeatCount);
+ const inputQuantity = getProcessingInputQuantity(recipe, repeatCount);
+ const totalSeconds = getProcessingTotalSeconds(recipe, repeatCount);
+
+ if ((game.inventory[recipe.inputId] || 0) < inputQuantity) {
   statusText.textContent = "\uC7AC\uB8CC\uAC00 \uBD80\uC871\uD574\uC694";
   return;
  }
 
  const now = Date.now();
- game.inventory[recipe.inputId] -= recipe.inputQuantity;
+ game.inventory[recipe.inputId] -= inputQuantity;
  game.processingSlots[index] = {
   ...slot,
   recipeId,
+  repeatCount,
+  totalSeconds,
   startedAt: now,
-  readyAt: now + getAdjustedProcessingSeconds(recipe) * 1000,
+  readyAt: now + totalSeconds * 1000,
  };
- statusText.textContent = text.processing;
+ statusText.textContent = `${getProduct(recipe.outputId).name} x${getProcessingOutputQuantity(recipe, repeatCount)} ${text.processing}`;
  saveGame();
  render();
  renderProcessingOptions();
@@ -1832,15 +1939,45 @@ function collectProcessingProduct() {
  const recipe = getProcessingRecipe(slot?.recipeId);
  if (!recipe || Date.now() < slot.readyAt) return;
 
- game.inventory[recipe.outputId] = (game.inventory[recipe.outputId] || 0) + recipe.outputQuantity;
- const expAmount = grantPlayerExp(getExpForProcessing(recipe));
+ const repeatCount = getProcessingRepeatCount(slot);
+ const outputQuantity = getProcessingOutputQuantity(recipe, repeatCount);
+ game.inventory[recipe.outputId] = (game.inventory[recipe.outputId] || 0) + outputQuantity;
+ const expAmount = grantPlayerExp(getExpForProcessing(recipe) * repeatCount);
  game.processingSlots[index] = {
   ...slot,
   recipeId: null,
+  repeatCount: 1,
+  totalSeconds: null,
   startedAt: null,
   readyAt: null,
  };
- statusText.textContent = `${getProduct(recipe.outputId).name} ${recipe.outputQuantity}\uAC1C ${text.collect} · ${text.expGained} +${expAmount}`;
+ statusText.textContent = `${getProduct(recipe.outputId).name} ${outputQuantity}\uAC1C ${text.collect} · ${text.expGained} +${expAmount}`;
+ saveGame();
+ render();
+ renderProcessingOptions();
+}
+
+function requestCancelProcessingProduct() {
+ openConfirmDialog(
+  "\uC0DD\uC0B0\uC744 \uCDE8\uC18C\uD558\uBA74 \uD22C\uC785\uD55C \uC7AC\uB8CC\uB294 \uC0AC\uB77C\uC838\uC694. \uC815\uB9D0 \uCDE8\uC18C\uD560\uAE4C\uC694?",
+  cancelProcessingProduct,
+ );
+}
+
+function cancelProcessingProduct() {
+ const index = game.selectedProcessingIndex;
+ const slot = game.processingSlots[index];
+ if (index === null || !slot?.recipeId) return;
+
+ game.processingSlots[index] = {
+  ...slot,
+  recipeId: null,
+  repeatCount: 1,
+  totalSeconds: null,
+  startedAt: null,
+  readyAt: null,
+ };
+ statusText.textContent = text.cancelProduction;
  saveGame();
  render();
  renderProcessingOptions();
@@ -2209,8 +2346,6 @@ function renderUpgrades() {
   button.innerHTML = `
    <span class="upgrade-plot-name">${index + 1}${text.plot}</span>
    <span>${text.speedLevel} Lv.${tile.speedLevel}</span>
-   <span>${text.yieldLevel} x${tile.yieldLevel}</span>
-   <span>${text.seedLevel} Lv.${tile.seedLevel}</span>
   `;
   button.addEventListener("click", () => openUpgradeSheet(index));
   upgradeGrid.appendChild(button);
@@ -2240,32 +2375,7 @@ function renderUpgradeOptions() {
  const tile = game.farmTiles[index];
  upgradeOptions.innerHTML = "";
 
- [
-  {
-   type: "speed",
-   title: text.upgradeSpeed,
-   current: `Lv.${tile.speedLevel}`,
-   next: tile.speedLevel >= 3 ? text.maxUpgrade : `Lv.${tile.speedLevel + 1}`,
-   cost: getUpgradeCost("speed", tile.speedLevel),
-   isMax: tile.speedLevel >= 3,
-  },
-  {
-   type: "yield",
-   title: text.upgradeYield,
-   current: `x${tile.yieldLevel}`,
-   next: tile.yieldLevel >= 3 ? text.maxUpgrade : `x${tile.yieldLevel + 1}`,
-   cost: getUpgradeCost("yield", tile.yieldLevel),
-   isMax: tile.yieldLevel >= 3,
-  },
-  {
-   type: "seed",
-   title: text.upgradeSeed,
-   current: `Lv.${tile.seedLevel}`,
-   next: tile.seedLevel >= 3 ? text.maxUpgrade : `Lv.${tile.seedLevel + 1}`,
-   cost: getUpgradeCost("seed", tile.seedLevel),
-   isMax: tile.seedLevel >= 3,
-  },
- ].forEach((upgrade) => {
+ getPlotUpgradeOptions(tile, index).forEach((upgrade) => {
   const button = document.createElement("button");
   button.className = `crop-option no-icon${!upgrade.isMax && game.gold < upgrade.cost ? " unaffordable" : ""}`;
   button.type = "button";
@@ -2283,23 +2393,55 @@ function renderUpgradeOptions() {
  });
 }
 
-function getUpgradeCost(type, level) {
- const costs = {
-  speed: { 1: 25, 2: 70 },
-  yield: { 1: 20, 2: 60 },
-  seed: { 1: 25, 2: 70 },
+function getPlotUpgradeOptions(tile, index) {
+ return [
+  {
+   type: "speed",
+   title: text.upgradeSpeed,
+   current: `Lv.${tile.speedLevel} · ${getGrowSpeedReductionPercent(tile.speedLevel)}%`,
+   next: tile.speedLevel >= maxPlotUpgradeLevel
+    ? text.maxUpgrade
+    : `Lv.${tile.speedLevel + 1} · ${getGrowSpeedReductionPercent(tile.speedLevel + 1)}%`,
+   cost: getUpgradeCost("speed", tile.speedLevel, index),
+   isMax: tile.speedLevel >= maxPlotUpgradeLevel,
+  },
+ ];
+}
+
+function getGrowSpeedReductionPercent(level) {
+ const rates = {
+  1: 0,
+  2: 10,
+  3: 20,
+  4: 30,
+  5: 40,
  };
 
- return costs[type]?.[level] ?? 0;
+ return rates[sanitizePlotUpgradeLevel(level)] ?? 0;
+}
+
+function getPlotUpgradeCostMultiplier(index) {
+ const multipliers = [1, 1, 1.25, 1.5, 1.8, 2.15];
+ return multipliers[index] ?? 2.15;
+}
+
+function getUpgradeCost(type, level, plotIndex = 0) {
+ const costs = {
+  speed: { 1: 20, 2: 60, 3: 120, 4: 220 },
+ };
+
+ const baseCost = costs[type]?.[level] ?? 0;
+ return Math.ceil(baseCost * getPlotUpgradeCostMultiplier(plotIndex));
 }
 
 function buyTileUpgrade(type) {
  const index = game.selectedUpgradeTileIndex;
  const tile = game.farmTiles[index];
- const key = type === "yield" ? "yieldLevel" : type === "speed" ? "speedLevel" : "seedLevel";
- const cost = getUpgradeCost(type, tile[key]);
+ const key = type === "speed" ? "speedLevel" : null;
+ if (!key) return;
+ const cost = getUpgradeCost(type, tile[key], index);
 
- if (tile[key] >= 3) {
+ if (tile[key] >= maxPlotUpgradeLevel) {
   statusText.textContent = text.maxUpgrade;
   return;
  }
@@ -2543,6 +2685,7 @@ newsToggleButton.addEventListener("click", () => {
 });
 
 preloadGameImages();
+bindBackgroundMusicStart();
 rankingButton?.addEventListener("click", openRankingPopup);
 rankingCloseButton?.addEventListener("click", closeRankingPopup);
 levelUpPopupButton.addEventListener("click", closeLevelUpPopup);
