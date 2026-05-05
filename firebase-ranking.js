@@ -1,10 +1,8 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   collection,
   deleteDoc,
   doc,
   getDocs,
-  getFirestore,
   limit,
   orderBy,
   query,
@@ -12,16 +10,7 @@ import {
   setDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD0WQXZ5I3SYGICi4GfpwV8kFT3IqsbWzs",
-  authDomain: "moms-farm.firebaseapp.com",
-  projectId: "moms-farm",
-  storageBucket: "moms-farm.firebasestorage.app",
-  messagingSenderId: "842738034459",
-  appId: "1:842738034459:web:a6f3fc23b1d81b5fd555be",
-  measurementId: "G-EG8YXS7B6W",
-};
+import { getFirebaseDb, isFirebaseConfigured } from "./firebase-init.js";
 
 const saveKey = "moms-farm-save-v1";
 const playerIdKey = "moms-farm-ranking-player-id";
@@ -30,15 +19,10 @@ const rankingRefreshMs = 30000;
 let db = null;
 let rankingTimer = null;
 
-function isFirebaseConfigured() {
-  return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
-}
-
 function getDb() {
   if (!isFirebaseConfigured()) return null;
   if (!db) {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    db = getFirebaseDb();
   }
   return db;
 }

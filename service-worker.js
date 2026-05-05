@@ -1,11 +1,14 @@
-const CACHE_NAME = "moms-farm-pwa-v1";
+const CACHE_NAME = "moms-farm-pwa-v2";
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./script.js",
+  "./firebase-init.js",
   "./firebase-ranking.js",
+  "./firebase-save.js",
+  "./firebase-security-rules-example.txt",
   "./manifest.webmanifest",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",

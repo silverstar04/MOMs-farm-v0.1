@@ -165,6 +165,8 @@ const crops = [
 
 const saveKey = "moms-farm-save-v1";
 const settingsSaveKey = "moms-farm-settings-v1";
+const saveVersion = 1;
+const appVersion = "0.1.0";
 const backgroundMusicTracks = [
  "assets/audio/patchwork-harvest-1.mp3",
  "assets/audio/patchwork-harvest-2.mp3",
@@ -739,6 +741,37 @@ function sanitizeUnlockedCropIds(upgrades, farmTiles, inventory) {
  return [...unlockedIds];
 }
 
+function hydrateSavedGame(savedGame) {
+ const farmTiles = Array.from({ length: maxPlotCount }, (_, index) => sanitizeTile(savedGame.farmTiles?.[index]));
+ const animalSlots = Array.from({ length: maxPlotCount }, (_, index) => sanitizeAnimalSlot(savedGame.animalSlots?.[index]));
+ const processingSlots = Array.from({ length: maxPlotCount }, (_, index) => sanitizeProcessingSlot(savedGame.processingSlots?.[index]));
+ const inventory = sanitizeInventory(savedGame.inventory);
+ const salesHistory = sanitizeSalesHistory(savedGame.salesHistory);
+ const player = sanitizePlayer(savedGame.player);
+ const clientUpdatedAt = Math.floor(Number(savedGame.clientUpdatedAt));
+
+ return {
+  gold: Number.isFinite(Number(savedGame.gold)) ? Math.max(0, Math.floor(Number(savedGame.gold))) : 0,
+  player,
+  selectedTileIndex: null,
+  selectedUpgradeTileIndex: null,
+  selectedProcessingIndex: null,
+  selectedAnimalIndex: null,
+  plotsOwned: sanitizePlotsOwned(savedGame.plotsOwned, player.level),
+  farmTiles,
+  animalSlots,
+  processingSlots,
+  inventory,
+  upgrades: {
+   unlockedCropIds: sanitizeUnlockedCropIds(savedGame.upgrades, farmTiles, inventory),
+  },
+  salesHistory,
+  daily: sanitizeDaily(savedGame.daily, salesHistory),
+  clientUpdatedAt: Number.isFinite(clientUpdatedAt) ? Math.max(0, clientUpdatedAt) : 0,
+  saveVersion: Math.max(1, Math.floor(Number(savedGame.saveVersion)) || saveVersion),
+ };
+}
+
 function loadGame() {
  const newGame = createNewGame();
  const savedText = localStorage.getItem(saveKey);
@@ -749,40 +782,15 @@ function loadGame() {
 
  try {
   const savedGame = JSON.parse(savedText);
-  const farmTiles = Array.from({ length: maxPlotCount }, (_, index) => sanitizeTile(savedGame.farmTiles?.[index]));
-  const animalSlots = Array.from({ length: maxPlotCount }, (_, index) => sanitizeAnimalSlot(savedGame.animalSlots?.[index]));
-  const processingSlots = Array.from({ length: maxPlotCount }, (_, index) => sanitizeProcessingSlot(savedGame.processingSlots?.[index]));
-  const inventory = sanitizeInventory(savedGame.inventory);
-  const salesHistory = sanitizeSalesHistory(savedGame.salesHistory);
-
-  const player = sanitizePlayer(savedGame.player);
-
-  return {
-   gold: Number.isFinite(Number(savedGame.gold)) ? Math.max(0, Math.floor(Number(savedGame.gold))) : 0,
-   player,
-   selectedTileIndex: null,
-   selectedUpgradeTileIndex: null,
-   selectedProcessingIndex: null,
-   selectedAnimalIndex: null,
-   plotsOwned: sanitizePlotsOwned(savedGame.plotsOwned, player.level),
-   farmTiles,
-   animalSlots,
-   processingSlots,
-   inventory,
-   upgrades: {
-    unlockedCropIds: sanitizeUnlockedCropIds(savedGame.upgrades, farmTiles, inventory),
-   },
-   salesHistory,
-   daily: sanitizeDaily(savedGame.daily, salesHistory),
-  };
+  return hydrateSavedGame(savedGame);
  } catch {
   localStorage.removeItem(saveKey);
   return newGame;
  }
 }
 
-function saveGame() {
- const saveData = {
+function createSaveData(clientUpdatedAt = Date.now()) {
+ return {
   gold: game.gold,
   player: game.player,
   plotsOwned: game.plotsOwned,
@@ -793,9 +801,39 @@ function saveGame() {
   upgrades: game.upgrades,
   salesHistory: game.salesHistory,
   daily: game.daily,
+  clientUpdatedAt,
+  saveVersion,
+  appVersion,
+ };
+}
+
+function saveGame(options = {}) {
+ const clientUpdatedAt = options.clientUpdatedAt || Date.now();
+ const saveData = {
+  ...createSaveData(clientUpdatedAt),
  };
 
+ game.clientUpdatedAt = clientUpdatedAt;
+ game.saveVersion = saveVersion;
  localStorage.setItem(saveKey, JSON.stringify(saveData));
+ if (!options.skipCloud) {
+  window.MomsFarmCloudSave?.scheduleSave?.(saveData);
+ }
+}
+
+function getLocalSaveData() {
+ try {
+  return JSON.parse(localStorage.getItem(saveKey) || "null");
+ } catch {
+  return null;
+ }
+}
+
+function applySaveData(saveData, options = {}) {
+ const hydratedGame = hydrateSavedGame(saveData || {});
+ Object.assign(game, hydratedGame);
+ saveGame({ skipCloud: options.skipCloud, clientUpdatedAt: hydratedGame.clientUpdatedAt || Date.now() });
+ render();
 }
 
 const game = loadGame();
@@ -2099,6 +2137,39 @@ function getSettingsMenuItems() {
     });
    },
   },
+  {
+   id: "cloudSave",
+   title: "\uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5",
+   render() {
+    return `
+     <div class="settings-option">
+      <span class="settings-option-row">
+       <strong>${this.title}</strong>
+       <span id="cloudSaveStatus">${getCloudStatusText()}</span>
+      </span>
+      <span>\uB85C\uADF8\uC778: <b id="cloudLoginStatus">${getCloudLoginStatusText()}</b></span>
+      <span>Google \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uD558\uBA74 \uB2E4\uB978 \uAE30\uAE30\uC5D0\uC11C\uB3C4 \uC774\uC5B4\uC11C \uD50C\uB808\uC774\uD560 \uC218 \uC788\uC5B4\uC694.</span>
+      <span>\uC774 \uAE30\uAE30 \uC800\uC7A5: <b id="localSaveTime">${getLocalSaveTimeText()}</b></span>
+      <span>\uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5: <b id="cloudSaveTime">\uD655\uC778 \uC911...</b></span>
+      <div class="settings-actions">
+       <button id="googleLoginButton" class="small-button" type="button">Google \uB85C\uADF8\uC778</button>
+       <button id="googleLogoutButton" class="secondary-button" type="button">Google \uB85C\uADF8\uC544\uC6C3</button>
+       <button id="cloudSaveNowButton" class="small-button" type="button">\uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5</button>
+       <button id="cloudLoadButton" class="secondary-button" type="button">\uD074\uB77C\uC6B0\uB4DC \uBD88\uB7EC\uC624\uAE30</button>
+       <button id="cloudCheckButton" class="secondary-button" type="button">\uC0C1\uD0DC \uD655\uC778</button>
+      </div>
+     </div>
+    `;
+   },
+   bind() {
+    document.querySelector("#cloudSaveNowButton")?.addEventListener("click", () => window.MomsFarmCloudSave?.saveNow?.());
+    document.querySelector("#cloudLoadButton")?.addEventListener("click", () => window.MomsFarmCloudSave?.loadNow?.());
+    document.querySelector("#cloudCheckButton")?.addEventListener("click", () => window.MomsFarmCloudSave?.checkStatus?.());
+    document.querySelector("#googleLoginButton")?.addEventListener("click", () => window.MomsFarmCloudSave?.signInWithGoogle?.());
+    document.querySelector("#googleLogoutButton")?.addEventListener("click", () => window.MomsFarmCloudSave?.signOutGoogle?.());
+    window.MomsFarmCloudSave?.renderStatus?.();
+   },
+  },
  ];
 }
 
@@ -2115,6 +2186,41 @@ function updateMusicVolume(value) {
  if (volumeText) {
   volumeText.textContent = settings.musicVolume === 0 ? "\uC74C\uC18C\uAC70 \uC911" : `${settings.musicVolume}%`;
  }
+}
+
+window.MomsFarmGameSave = {
+ getSaveData: () => getLocalSaveData() || createSaveData(game.clientUpdatedAt || Date.now()),
+ getLocalUpdatedAt: () => Number(getLocalSaveData()?.clientUpdatedAt || game.clientUpdatedAt || 0),
+ applySaveData,
+ saveNow: () => saveGame(),
+ render,
+ formatSaveTime,
+ getAppVersion: () => appVersion,
+ getSaveVersion: () => saveVersion,
+};
+
+function getCloudStatusText() {
+ return window.MomsFarmCloudSave?.getStatusText?.() || "\uD074\uB77C\uC6B0\uB4DC \uC900\uBE44 \uC911...";
+}
+
+function getCloudLoginStatusText() {
+ return window.MomsFarmCloudSave?.getLoginStatusText?.() || "\uB85C\uADF8\uC778 \uC900\uBE44 \uC911";
+}
+
+function getLocalSaveTimeText() {
+ const localSave = getLocalSaveData();
+ return formatSaveTime(localSave?.clientUpdatedAt);
+}
+
+function formatSaveTime(timestamp) {
+ const time = Number(timestamp);
+ if (!Number.isFinite(time) || time <= 0) return "\uC544\uC9C1 \uC5C6\uC5B4\uC694";
+ return new Date(time).toLocaleString("ko-KR", {
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+ });
 }
 
 function renderInventory() {

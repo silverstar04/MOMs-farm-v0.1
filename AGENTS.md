@@ -9,6 +9,8 @@ Root files:
 - style.css
 - script.js
 - firebase-ranking.js
+- firebase-init.js
+- firebase-save.js
 - manifest.webmanifest
 - service-worker.js
 
@@ -129,6 +131,20 @@ Keep PWA paths relative so GitHub project pages can work from a subfolder.
 Do not cache or intercept external Firebase CDN/API requests in the service worker.
 When adding new core assets needed for offline play, update service-worker.js cache list.
 App icons live in assets/icons/.
+
+## Firebase Save Rules
+
+Firebase ranking and Firebase account save are separate modules.
+Shared Firebase app/Auth/Firestore initialization lives in `firebase-init.js`; use it instead of initializing Firebase separately in each feature file.
+Ranking uses `firebase-ranking.js` and the `rankings` collection.
+Account save uses `firebase-save.js` and `users/{uid}/save/main`.
+Keep localStorage save working even when Firebase Auth/Firestore fails.
+Cloud saves should be debounced/throttled and must not run on every timer tick.
+Anonymous Auth and Google Auth are both supported.
+Google save data must use Firebase Auth uid only; do not store email, display name, or profile image in save documents.
+Google login should request only the default sign-in permission. Do not request Gmail, Drive, Contacts, or Calendar scopes.
+If an anonymous account can be linked to Google, keep the save flow on the linked account. If linking fails and a different Google uid is used, ask before moving the current local save into that Google cloud save.
+Never overwrite local saves with cloud saves without a user choice or clear confirmation.
 
 ## Verification
 
