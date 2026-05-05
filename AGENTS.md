@@ -9,6 +9,8 @@ Root files:
 - style.css
 - script.js
 - firebase-ranking.js
+- manifest.webmanifest
+- service-worker.js
 
 No npm, no build step, no bundler, and no server-only code.
 
@@ -30,6 +32,7 @@ Mobile UX is the priority.
 
 Use CDN/module imports only when external browser libraries are needed.
 Firebase errors must fail safely and never stop the game.
+PWA/service worker errors must fail safely and never stop the game.
 Do not revert unrelated user changes.
 Avoid generated clutter, cache folders, backup files, or duplicate originals.
 Use apply_patch for manual edits when possible.
@@ -117,6 +120,15 @@ Prioritize mobile layout.
 Bottom tabs should stay fixed at the bottom.
 Farm inner menus should not cover or push the bottom tab buttons.
 Sell all should ask for confirmation.
+
+## PWA Rules
+
+Keep the app installable as a static PWA.
+Use manifest.webmanifest and service-worker.js without npm or build tools.
+Keep PWA paths relative so GitHub project pages can work from a subfolder.
+Do not cache or intercept external Firebase CDN/API requests in the service worker.
+When adding new core assets needed for offline play, update service-worker.js cache list.
+App icons live in assets/icons/.
 
 ## Verification
 

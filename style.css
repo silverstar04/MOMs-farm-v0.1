@@ -77,6 +77,26 @@ button {
   box-shadow: 0 6px 14px rgba(42, 69, 32, 0.16);
 }
 
+.settings-button {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  width: 42px;
+  min-height: 42px;
+  place-items: center;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 2px solid rgba(76, 85, 60, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #30402d;
+  font-size: 19px;
+  font-weight: 900;
+  box-shadow: 0 6px 14px rgba(42, 69, 32, 0.16);
+}
+
 .news-toggle-button.active {
   background: #2f7f73;
   color: #ffffff;
@@ -1179,6 +1199,66 @@ h1 {
   color: #77684f;
   font-size: 12px;
   font-weight: 800;
+}
+
+.settings-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: none;
+  place-items: center;
+  padding: 18px;
+  background: rgba(33, 40, 31, 0.36);
+}
+
+.settings-popup.open {
+  display: grid;
+}
+
+.settings-card {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 360px);
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 45px rgba(30, 40, 25, 0.26);
+}
+
+.settings-options {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-option {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d7dfcf;
+  border-radius: 8px;
+  background: #f8fbf4;
+}
+
+.settings-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-option strong,
+.settings-option span {
+  display: block;
+}
+
+.settings-option span {
+  color: #66705f;
+  font-size: 13px;
+}
+
+.settings-slider {
+  width: 100%;
+  accent-color: #2f7f73;
 }
 
 @keyframes attentionGlow {

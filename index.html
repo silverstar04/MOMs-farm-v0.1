@@ -3,13 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2f7f73" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mom's Farm" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Mom's Farm</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./assets/icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
 </head>
 <body>
   <main class="game-shell">
     <header class="game-header">
       <button id="rankingButton" class="ranking-button" type="button" aria-label="&#47021;&#53433;">&#47021;&#53433;</button>
+      <button id="settingsButton" class="settings-button" type="button" aria-label="&#54872;&#44221;&#49444;&#51221;">&#9881;&#65039;</button>
       <button id="newsToggleButton" class="news-toggle-button" type="button" aria-label="&#46041;&#45348;&#45684;&#49828;" aria-expanded="false">TV</button>
       <p class="eyebrow">mobile farm prototype</p>
       <h1>Mom's Farm</h1>
@@ -199,6 +209,19 @@
       </div>
       <p id="rankingStatusText" class="empty-sell-text"></p>
       <ol id="rankingList" class="ranking-list"></ol>
+    </section>
+  </div>
+
+  <div id="settingsPopup" class="settings-popup" aria-hidden="true">
+    <section class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="sheet-title-row">
+        <div>
+          <p class="eyebrow">settings</p>
+          <h2 id="settingsTitle">&#54872;&#44221;&#49444;&#51221;</h2>
+        </div>
+        <button id="settingsCloseButton" class="icon-button" type="button" aria-label="&#45803;&#44592;">x</button>
+      </div>
+      <div id="settingsOptions" class="settings-options"></div>
     </section>
   </div>
 

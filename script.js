@@ -164,6 +164,7 @@ const crops = [
 ];
 
 const saveKey = "moms-farm-save-v1";
+const settingsSaveKey = "moms-farm-settings-v1";
 const backgroundMusicTracks = [
  "assets/audio/patchwork-harvest-1.mp3",
  "assets/audio/patchwork-harvest-2.mp3",
@@ -697,6 +698,26 @@ function sanitizeInventory(inventory) {
  return cleanInventory;
 }
 
+function sanitizeSettings(settings) {
+ const musicVolume = Math.round(Number(settings?.musicVolume));
+
+ return {
+  musicVolume: Number.isFinite(musicVolume) ? Math.min(100, Math.max(0, musicVolume)) : 42,
+ };
+}
+
+function loadSettings() {
+ try {
+  return sanitizeSettings(JSON.parse(localStorage.getItem(settingsSaveKey) || "{}"));
+ } catch {
+  return sanitizeSettings({});
+ }
+}
+
+function saveSettings() {
+ localStorage.setItem(settingsSaveKey, JSON.stringify(settings));
+}
+
 function sanitizeUnlockedCropIds(upgrades, farmTiles, inventory) {
  const unlockedIds = new Set(defaultUnlockedCropIds);
  const savedIds = upgrades?.unlockedCropIds;
@@ -778,6 +799,7 @@ function saveGame() {
 }
 
 const game = loadGame();
+const settings = loadSettings();
 const ui = {
  selectedSellCropId: null,
  sellQuantity: 1,
@@ -834,6 +856,10 @@ const rankingButton = document.querySelector("#rankingButton");
 const rankingPopup = document.querySelector("#rankingPopup");
 const rankingCloseButton = document.querySelector("#rankingCloseButton");
 const rankingStatusText = document.querySelector("#rankingStatusText");
+const settingsButton = document.querySelector("#settingsButton");
+const settingsPopup = document.querySelector("#settingsPopup");
+const settingsCloseButton = document.querySelector("#settingsCloseButton");
+const settingsOptions = document.querySelector("#settingsOptions");
 const bottomNav = document.querySelector(".bottom-nav");
 const navButtons = document.querySelectorAll("[data-tab]");
 const farmSubNav = document.querySelector("#farmSubNav");
@@ -1006,13 +1032,14 @@ function preloadGameImages() {
 
 const backgroundMusic = new Audio();
 backgroundMusic.preload = "auto";
-backgroundMusic.volume = 0.42;
+applyMusicVolume();
 
 function getRandomMusicTrack() {
  return backgroundMusicTracks[Math.floor(Math.random() * backgroundMusicTracks.length)];
 }
 
 function playRandomBackgroundMusic() {
+ applyMusicVolume();
  backgroundMusic.src = getRandomMusicTrack();
  backgroundMusic.currentTime = 0;
  backgroundMusic.play().catch(() => {
@@ -1031,6 +1058,24 @@ function bindBackgroundMusicStart() {
  });
 
  backgroundMusic.addEventListener("ended", playRandomBackgroundMusic);
+}
+
+function registerServiceWorker() {
+ if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+  return;
+ }
+
+ window.addEventListener("load", () => {
+  navigator.serviceWorker.register("./service-worker.js").catch(() => {
+   // PWA support should never block the game.
+  });
+ });
+}
+
+function applyMusicVolume() {
+ const volume = Math.min(100, Math.max(0, settings.musicVolume)) / 100;
+ backgroundMusic.volume = volume;
+ backgroundMusic.muted = volume === 0;
 }
 
 function getRemainingSeconds(tile) {
@@ -2020,6 +2065,58 @@ function closeConfirmDialog() {
  ui.confirmAction = null;
 }
 
+function openSettingsPopup() {
+ settingsPopup.classList.add("open");
+ settingsPopup.setAttribute("aria-hidden", "false");
+ renderSettingsOptions();
+}
+
+function closeSettingsPopup() {
+ settingsPopup.classList.remove("open");
+ settingsPopup.setAttribute("aria-hidden", "true");
+}
+
+function getSettingsMenuItems() {
+ return [
+  {
+   id: "musicVolume",
+   title: "\uC74C\uC545 \uBCFC\uB968",
+   description: settings.musicVolume === 0 ? "\uC74C\uC18C\uAC70 \uC911" : `${settings.musicVolume}%`,
+   render() {
+    return `
+     <label class="settings-option" for="musicVolumeSlider">
+      <span class="settings-option-row">
+       <strong>${this.title}</strong>
+       <span id="musicVolumeValue">${this.description}</span>
+      </span>
+      <input id="musicVolumeSlider" class="settings-slider" type="range" min="0" max="100" step="1" value="${settings.musicVolume}" />
+     </label>
+    `;
+   },
+   bind() {
+    document.querySelector("#musicVolumeSlider")?.addEventListener("input", (event) => {
+     updateMusicVolume(event.target.value);
+    });
+   },
+  },
+ ];
+}
+
+function renderSettingsOptions() {
+ settingsOptions.innerHTML = getSettingsMenuItems().map((item) => item.render()).join("");
+ getSettingsMenuItems().forEach((item) => item.bind());
+}
+
+function updateMusicVolume(value) {
+ settings.musicVolume = sanitizeSettings({ musicVolume: value }).musicVolume;
+ applyMusicVolume();
+ saveSettings();
+ const volumeText = document.querySelector("#musicVolumeValue");
+ if (volumeText) {
+  volumeText.textContent = settings.musicVolume === 0 ? "\uC74C\uC18C\uAC70 \uC911" : `${settings.musicVolume}%`;
+ }
+}
+
 function renderInventory() {
  inventoryGrid.innerHTML = "";
 
@@ -2686,8 +2783,16 @@ newsToggleButton.addEventListener("click", () => {
 
 preloadGameImages();
 bindBackgroundMusicStart();
+registerServiceWorker();
 rankingButton?.addEventListener("click", openRankingPopup);
 rankingCloseButton?.addEventListener("click", closeRankingPopup);
+settingsButton?.addEventListener("click", openSettingsPopup);
+settingsCloseButton?.addEventListener("click", closeSettingsPopup);
+settingsPopup?.addEventListener("click", (event) => {
+ if (event.target === settingsPopup) {
+  closeSettingsPopup();
+ }
+});
 levelUpPopupButton.addEventListener("click", closeLevelUpPopup);
 
 render();
