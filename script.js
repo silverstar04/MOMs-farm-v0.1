@@ -934,15 +934,41 @@ function formatDuration(totalSeconds) {
 }
 
 function cropImage(crop, className) {
- return `<img class="${className}" src="${crop.image}" alt="${crop.name}" loading="lazy" />`;
+ return `<img class="${className}" src="${crop.image}" alt="${crop.name}" loading="eager" decoding="async" />`;
 }
 
 function itemImage(item, className) {
- return `<img class="${className}" src="${item.image}" alt="${item.name}" loading="lazy" />`;
+ return `<img class="${className}" src="${item.image}" alt="${item.name}" loading="eager" decoding="async" />`;
 }
 
 function buildingImage(building, className) {
- return `<img class="${className}" src="${building.image}" alt="${building.name}" loading="lazy" />`;
+ return `<img class="${className}" src="${building.image}" alt="${building.name}" loading="eager" decoding="async" />`;
+}
+
+function preloadGameImages() {
+ const imagePaths = new Set([
+  ...crops.map((crop) => crop.image),
+  ...products.map((product) => product.image),
+  ...animals.map((animal) => animal.image),
+  ...processingBuildings.map((building) => building.image),
+  "assets/backgrounds/farm_background.png",
+  "assets/backgrounds/sunnyfarm_background.png",
+  "assets/backgrounds/rainyfarm_background.png",
+  "assets/backgrounds/cloudyfarm_background.png",
+  "assets/openings/opening_animal.png",
+  "assets/openings/opening_building.png",
+  "assets/plots/plot_lv1.png",
+  "assets/plots/plot_lv2.png",
+  "assets/plots/plot_lv3.png",
+  "assets/plots/plot_lv4.png",
+  "assets/plots/plot_lv5.png",
+ ]);
+
+ imagePaths.forEach((path) => {
+  const image = new Image();
+  image.decoding = "async";
+  image.src = path;
+ });
 }
 
 function getRemainingSeconds(tile) {
@@ -1114,12 +1140,24 @@ function updateAnimalSlot(slot) {
  return true;
 }
 
-function render() {
+function updateGameState() {
  game.salesHistory = sanitizeSalesHistory(game.salesHistory);
+ const previousDateKey = game.daily?.dateKey;
  game.daily = sanitizeDaily(game.daily, game.salesHistory);
- game.farmTiles.forEach(updateTileState);
- game.animalSlots.forEach(updateAnimalSlot);
+
+ let changed = previousDateKey !== game.daily.dateKey;
+ game.farmTiles.forEach((tile) => {
+  changed = updateTileState(tile) || changed;
+ });
+ game.animalSlots.forEach((slot) => {
+  changed = updateAnimalSlot(slot) || changed;
+ });
  game.processingSlots.forEach(updateProcessingSlot);
+ return changed;
+}
+
+function render() {
+ updateGameState();
  goldText.textContent = game.gold;
  playerLevelText.textContent = `Lv.${game.player.level}`;
  playerExpText.textContent = `${game.player.exp} / ${getExpToNextLevel(game.player.level)}`;
@@ -1316,6 +1354,7 @@ function renderFarm() {
 
   button.className = `farm-tile ${isOwned ? tile.state : "locked"}`;
   button.type = "button";
+  button.dataset.tileIndex = String(index);
   applyPlotImage(button, tile);
   button.addEventListener("click", () => handleTileClick(index));
 
@@ -1346,7 +1385,7 @@ function renderFarm() {
    button.innerHTML = `
     <span class="tile-multiplier">x${tile.yieldLevel}</span>
     ${cropImage(crop, "tile-crop-image")}
-    <span class="tile-label">${formatDuration(remainingSeconds)}</span>
+    <span class="tile-label" data-tile-label>${formatDuration(remainingSeconds)}</span>
    `;
    button.setAttribute("aria-label", `${index + 1}${text.plot}, ${crop.name} ${text.growing}, ${formatDuration(remainingSeconds)} ${text.remaining}`);
   }
@@ -1355,7 +1394,7 @@ function renderFarm() {
    button.innerHTML = `
     <span class="tile-multiplier">x${tile.yieldLevel}</span>
     <span class="ready-bounce">${cropImage(crop, "tile-crop-image")}</span>
-    <span class="tile-label">${text.harvest}</span>
+    <span class="tile-label" data-tile-label>${text.harvest}</span>
    `;
    button.setAttribute("aria-label", `${index + 1}${text.plot}, ${crop.name} ${text.ready}`);
   }
@@ -1384,14 +1423,16 @@ function renderPlaceGrid(grid, sectionId) {
   const button = document.createElement("button");
   button.className = `farm-place-tile ${sectionId}${isUnlocked ? "" : " locked"}`;
   button.type = "button";
+  button.dataset.placeSection = sectionId;
+  button.dataset.placeIndex = String(index);
 
   if (sectionId === "animals" && isUnlocked) {
    if (animal) {
     const remaining = slot.readyAt ? formatDuration(getRemainingSeconds(slot)) : "";
     button.classList.add("installed");
     button.innerHTML = `
-     <img class="place-building-image animal-image" src="${animal.image}" alt="${animal.name}" loading="lazy" />
-     <span>${slot.readyAt ? remaining : animal.name}</span>
+     <img class="place-building-image animal-image" src="${animal.image}" alt="${animal.name}" loading="eager" decoding="async" />
+     <span data-place-label>${slot.readyAt ? remaining : animal.name}</span>
     `;
    } else {
     button.innerHTML = `<span>+ \uB3D9\uBB3C \uCD94\uAC00</span>`;
@@ -1400,8 +1441,8 @@ function renderPlaceGrid(grid, sectionId) {
    if (building) {
     button.classList.add("installed");
     button.innerHTML = `
-     <img class="place-building-image" src="${building.image}" alt="${building.name}" loading="lazy" />
-     <span>${isReady ? text.collect : recipe ? formatDuration(getRemainingSeconds(slot)) : building.name}</span>
+     <img class="place-building-image" src="${building.image}" alt="${building.name}" loading="eager" decoding="async" />
+     <span data-place-label>${isReady ? text.collect : recipe ? formatDuration(getRemainingSeconds(slot)) : building.name}</span>
     `;
    } else {
     button.innerHTML = `<span>+ ${text.install}</span>`;
@@ -1430,6 +1471,78 @@ function renderPlaceGrid(grid, sectionId) {
   });
   grid.appendChild(button);
  });
+}
+
+function updateLiveTimers() {
+ updateFarmTileTimers();
+ updatePlaceTimers();
+ updateOpenSheetTimers();
+}
+
+function updateFarmTileTimers() {
+ game.farmTiles.slice(0, maxPlotCount).forEach((tile, index) => {
+  const crop = getCrop(tile.cropId);
+  const button = farmGrid.querySelector(`[data-tile-index="${index}"]`);
+  if (!button || !crop || tile.state !== "growing") return;
+
+  const remainingSeconds = getRemainingSeconds(tile);
+  const growSeconds = getAdjustedGrowSeconds(crop, tile);
+  const progress = 1 - remainingSeconds / growSeconds;
+  const label = button.querySelector("[data-tile-label]");
+  button.style.setProperty("--progress", `${Math.max(0, Math.min(1, progress)) * 100}%`);
+  if (label) label.textContent = formatDuration(remainingSeconds);
+  button.setAttribute("aria-label", `${index + 1}${text.plot}, ${crop.name} ${text.growing}, ${formatDuration(remainingSeconds)} ${text.remaining}`);
+ });
+}
+
+function updatePlaceTimers() {
+ updatePlaceTimerGrid(animalGrid, "animals");
+ updatePlaceTimerGrid(processingGrid, "processing");
+}
+
+function updatePlaceTimerGrid(grid, sectionId) {
+ const slots = sectionId === "processing" ? game.processingSlots : game.animalSlots;
+
+ slots.slice(0, maxPlotCount).forEach((slot, index) => {
+  const button = grid.querySelector(`[data-place-section="${sectionId}"][data-place-index="${index}"]`);
+  const label = button?.querySelector("[data-place-label]");
+  if (!button || !label) return;
+
+  if (sectionId === "animals") {
+   const animal = getAnimal(slot.animalId);
+   if (!animal) return;
+   label.textContent = slot.readyAt ? formatDuration(getRemainingSeconds(slot)) : animal.name;
+   return;
+  }
+
+  const building = getProcessingBuilding(slot.buildingId);
+  const recipe = getProcessingRecipe(slot.recipeId);
+  if (!building) return;
+  label.textContent = slot.readyAt && Date.now() >= slot.readyAt
+   ? text.collect
+   : recipe
+    ? formatDuration(getRemainingSeconds(slot))
+    : building.name;
+ });
+}
+
+function updateOpenSheetTimers() {
+ if (animalSheet.classList.contains("open")) {
+  renderAnimalWorkOptions();
+ }
+
+ if (processingSheet.classList.contains("open")) {
+  renderProcessingWorkOptions();
+ }
+}
+
+function tickGame() {
+ if (updateGameState()) {
+  render();
+  return;
+ }
+
+ updateLiveTimers();
 }
 
 function handleProcessingSlotClick(index) {
@@ -2429,10 +2542,11 @@ newsToggleButton.addEventListener("click", () => {
  newsToggleButton.setAttribute("aria-expanded", String(isOpen));
 });
 
+preloadGameImages();
 rankingButton?.addEventListener("click", openRankingPopup);
 rankingCloseButton?.addEventListener("click", closeRankingPopup);
 levelUpPopupButton.addEventListener("click", closeLevelUpPopup);
 
 render();
-setInterval(render, 1000);
+setInterval(tickGame, 1000);
 

@@ -372,10 +372,10 @@ h1 {
   z-index: 1;
   width: 74%;
   height: 74%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.42);
-  border-radius: 8px;
-  box-shadow: 0 6px 14px rgba(43, 31, 19, 0.22);
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  filter: drop-shadow(0 6px 8px rgba(43, 31, 19, 0.28));
 }
 
 .tile-multiplier {
