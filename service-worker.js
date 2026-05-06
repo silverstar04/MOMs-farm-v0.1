@@ -1,4 +1,4 @@
-const CACHE_NAME = "moms-farm-pwa-v2";
+const CACHE_NAME = "moms-farm-pwa-v3";
 
 const CORE_ASSETS = [
   "./",

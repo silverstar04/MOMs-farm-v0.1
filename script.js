@@ -215,6 +215,16 @@ const products = [
  oversupplyBase: 24,
 },
 {
+ id: "bread",
+ name: "\uBE75",
+ image: "assets/products/bread.png",
+ sellPrice: 42,
+ minPrice: 32,
+ maxPrice: 56,
+ marketSwing: 0.14,
+ oversupplyBase: 8,
+},
+{
  id: "egg",
  name: "\uB2EC\uAC40",
  image: "assets/animal-products/egg.png",
@@ -267,8 +277,15 @@ const processingBuildings = [
   id: "feedmill",
   name: "\uC0AC\uB8CC\uACF5\uC7A5",
   image: "assets/buildings/feedmill.png",
-  cost: 160,
+ cost: 160,
   recipeIds: ["cowFeed", "henFeed"],
+ },
+ {
+  id: "bakery",
+  name: "\uBCA0\uC774\uCEE4\uB9AC",
+  image: "assets/buildings/bakery.png",
+  cost: 260,
+  recipeIds: ["bread"],
  },
 ];
 const processingRecipes = [
@@ -298,6 +315,15 @@ const processingRecipes = [
   outputId: "henFeed",
   outputQuantity: 1,
   seconds: 24,
+ },
+ {
+  id: "bread",
+  buildingId: "bakery",
+  inputId: "flour",
+  inputQuantity: 2,
+  outputId: "bread",
+  outputQuantity: 1,
+  seconds: 45,
  },
 ];
 const levelUnlocks = [
@@ -705,6 +731,7 @@ function sanitizeSettings(settings) {
 
  return {
   musicVolume: Number.isFinite(musicVolume) ? Math.min(100, Math.max(0, musicVolume)) : 42,
+  processingRepeatCount: sanitizeProcessingRepeatCount(settings?.processingRepeatCount),
  };
 }
 
@@ -841,12 +868,12 @@ const settings = loadSettings();
 const ui = {
  selectedSellCropId: null,
  sellQuantity: 1,
- processingRepeatCount: 1,
+ processingRepeatCount: settings.processingRepeatCount,
  holdTimer: null,
  holdRepeatTimer: null,
  holdRepeatCount: 0,
-  highlightedUnlocks: new Set(),
-  levelUpTimer: null,
+ highlightedUnlocks: new Set(),
+ levelUpTimer: null,
  activeFarmSection: "plots",
  farmMenuOpen: false,
  confirmAction: null,
@@ -1040,6 +1067,12 @@ function itemImage(item, className) {
 
 function buildingImage(building, className) {
  return `<img class="${className}" src="${building.image}" alt="${building.name}" loading="eager" decoding="async" />`;
+}
+
+function setOpen(element, isOpen) {
+ if (!element) return;
+ element.classList.toggle("open", isOpen);
+ element.setAttribute("aria-hidden", String(!isOpen));
 }
 
 function preloadGameImages() {
@@ -1317,15 +1350,15 @@ function render() {
  playerLevelText.textContent = `Lv.${game.player.level}`;
  playerExpText.textContent = `${game.player.exp} / ${getExpToNextLevel(game.player.level)}`;
  applyWeatherBackground();
-  renderNews();
-  renderHighlights();
-  renderFarmShell();
-  renderPlotExpansion();
-  renderFarm();
-  renderFarmPlaces();
-  renderInventory();
+ renderNews();
+ renderHighlights();
+ renderFarmShell();
+ renderPlotExpansion();
+ renderFarm();
+ renderFarmPlaces();
+ renderInventory();
  renderUpgrades();
- renderUnlockCropButton();
+ unlockCropButton.hidden = true;
 }
 
 function applyWeatherBackground() {
@@ -1683,11 +1716,11 @@ function updatePlaceTimerGrid(grid, sectionId) {
 
 function updateOpenSheetTimers() {
  if (animalSheet.classList.contains("open")) {
-  renderAnimalWorkOptions();
+  renderAnimalOptions();
  }
 
  if (processingSheet.classList.contains("open")) {
-  renderProcessingWorkOptions();
+  renderProcessingOptions();
  }
 }
 
@@ -1722,15 +1755,32 @@ function handleAnimalSlotClick(index) {
 
 function openAnimalSheet(index) {
  game.selectedAnimalIndex = index;
- animalSheet.classList.add("open");
- animalSheet.setAttribute("aria-hidden", "false");
+ setOpen(animalSheet, true);
  renderAnimalOptions();
 }
 
 function closeAnimalSheet() {
- animalSheet.classList.remove("open");
- animalSheet.setAttribute("aria-hidden", "true");
+ setOpen(animalSheet, false);
  game.selectedAnimalIndex = null;
+}
+
+function renderCostOptions(container, items, imageHtml, onSelect) {
+ container.innerHTML = "";
+ items.forEach((item) => {
+  const button = document.createElement("button");
+  button.className = `crop-option${game.gold < item.cost ? " unaffordable" : ""}`;
+  button.type = "button";
+  button.innerHTML = `
+   <span class="crop-icon">${imageHtml(item)}</span>
+   <span class="crop-text">
+    <strong>${item.name}</strong>
+    <span>${text.cost} ${item.cost}G</span>
+   </span>
+   <span class="crop-price">${text.install}</span>
+  `;
+  button.addEventListener("click", () => onSelect(item.id));
+  container.appendChild(button);
+ });
 }
 
 function renderAnimalOptions() {
@@ -1739,21 +1789,12 @@ function renderAnimalOptions() {
  animalOptions.innerHTML = "";
 
  if (!slot?.animalId) {
-  animals.forEach((animal) => {
-   const button = document.createElement("button");
-   button.className = `crop-option${game.gold < animal.cost ? " unaffordable" : ""}`;
-   button.type = "button";
-   button.innerHTML = `
-    <span class="crop-icon">${itemImage(animal, "crop-option-image")}</span>
-    <span class="crop-text">
-     <strong>${animal.name}</strong>
-     <span>${text.cost} ${animal.cost}G</span>
-    </span>
-    <span class="crop-price">${text.install}</span>
-   `;
-   button.addEventListener("click", () => placeAnimal(animal.id));
-   animalOptions.appendChild(button);
-  });
+  renderCostOptions(
+   animalOptions,
+   animals,
+   (animal) => itemImage(animal, "crop-option-image"),
+   placeAnimal,
+  );
   return;
  }
 
@@ -1836,34 +1877,22 @@ function removeAnimal() {
 
 function openBuildingSheet(index) {
  game.selectedProcessingIndex = index;
- buildingSheet.classList.add("open");
- buildingSheet.setAttribute("aria-hidden", "false");
+ setOpen(buildingSheet, true);
  renderBuildingOptions();
 }
 
 function closeBuildingSheet() {
- buildingSheet.classList.remove("open");
- buildingSheet.setAttribute("aria-hidden", "true");
+ setOpen(buildingSheet, false);
  game.selectedProcessingIndex = null;
 }
 
 function renderBuildingOptions() {
- buildingOptions.innerHTML = "";
- processingBuildings.forEach((building) => {
-  const button = document.createElement("button");
-  button.className = `crop-option${game.gold < building.cost ? " unaffordable" : ""}`;
-  button.type = "button";
-  button.innerHTML = `
-   <span class="crop-icon">${buildingImage(building, "crop-option-image")}</span>
-   <span class="crop-text">
-    <strong>${building.name}</strong>
-    <span>${text.cost} ${building.cost}G</span>
-   </span>
-   <span class="crop-price">${text.install}</span>
-  `;
-  button.addEventListener("click", () => installProcessingBuilding(building.id));
-  buildingOptions.appendChild(button);
- });
+ renderCostOptions(
+  buildingOptions,
+  processingBuildings,
+  (building) => buildingImage(building, "crop-option-image"),
+  installProcessingBuilding,
+ );
 }
 
 function installProcessingBuilding(buildingId) {
@@ -1889,17 +1918,13 @@ function installProcessingBuilding(buildingId) {
 
 function openProcessingSheet(index) {
  game.selectedProcessingIndex = index;
- ui.processingRepeatCount = 1;
- processingSheet.classList.add("open");
- processingSheet.setAttribute("aria-hidden", "false");
+ setOpen(processingSheet, true);
  renderProcessingOptions();
 }
 
 function closeProcessingSheet() {
- processingSheet.classList.remove("open");
- processingSheet.setAttribute("aria-hidden", "true");
+ setOpen(processingSheet, false);
  game.selectedProcessingIndex = null;
- ui.processingRepeatCount = 1;
 }
 
 function renderProcessingOptions() {
@@ -1982,6 +2007,8 @@ function renderProcessingOptions() {
 
 function changeProcessingRepeatCount(amount) {
  ui.processingRepeatCount = Math.min(10, Math.max(1, sanitizeProcessingRepeatCount(ui.processingRepeatCount) + amount));
+ settings.processingRepeatCount = ui.processingRepeatCount;
+ saveSettings();
  renderProcessingOptions();
 }
 
@@ -2016,6 +2043,17 @@ function startProcessingRecipe(recipeId) {
  renderProcessingOptions();
 }
 
+function clearProcessingJob(slot) {
+ return {
+  ...slot,
+  recipeId: null,
+  repeatCount: 1,
+  totalSeconds: null,
+  startedAt: null,
+  readyAt: null,
+ };
+}
+
 function collectProcessingProduct() {
  const index = game.selectedProcessingIndex;
  const slot = game.processingSlots[index];
@@ -2026,14 +2064,7 @@ function collectProcessingProduct() {
  const outputQuantity = getProcessingOutputQuantity(recipe, repeatCount);
  game.inventory[recipe.outputId] = (game.inventory[recipe.outputId] || 0) + outputQuantity;
  const expAmount = grantPlayerExp(getExpForProcessing(recipe) * repeatCount);
- game.processingSlots[index] = {
-  ...slot,
-  recipeId: null,
-  repeatCount: 1,
-  totalSeconds: null,
-  startedAt: null,
-  readyAt: null,
- };
+ game.processingSlots[index] = clearProcessingJob(slot);
  statusText.textContent = `${getProduct(recipe.outputId).name} ${outputQuantity}\uAC1C ${text.collect} · ${text.expGained} +${expAmount}`;
  saveGame();
  render();
@@ -2052,14 +2083,7 @@ function cancelProcessingProduct() {
  const slot = game.processingSlots[index];
  if (index === null || !slot?.recipeId) return;
 
- game.processingSlots[index] = {
-  ...slot,
-  recipeId: null,
-  repeatCount: 1,
-  totalSeconds: null,
-  startedAt: null,
-  readyAt: null,
- };
+ game.processingSlots[index] = clearProcessingJob(slot);
  statusText.textContent = text.cancelProduction;
  saveGame();
  render();
@@ -2093,25 +2117,21 @@ function demolishProcessingBuilding() {
 function openConfirmDialog(message, action) {
  ui.confirmAction = action;
  confirmMessage.textContent = message;
- confirmDialog.classList.add("open");
- confirmDialog.setAttribute("aria-hidden", "false");
+ setOpen(confirmDialog, true);
 }
 
 function closeConfirmDialog() {
- confirmDialog.classList.remove("open");
- confirmDialog.setAttribute("aria-hidden", "true");
+ setOpen(confirmDialog, false);
  ui.confirmAction = null;
 }
 
 function openSettingsPopup() {
- settingsPopup.classList.add("open");
- settingsPopup.setAttribute("aria-hidden", "false");
+ setOpen(settingsPopup, true);
  renderSettingsOptions();
 }
 
 function closeSettingsPopup() {
- settingsPopup.classList.remove("open");
- settingsPopup.setAttribute("aria-hidden", "true");
+ setOpen(settingsPopup, false);
 }
 
 function getSettingsMenuItems() {
@@ -2174,8 +2194,9 @@ function getSettingsMenuItems() {
 }
 
 function renderSettingsOptions() {
- settingsOptions.innerHTML = getSettingsMenuItems().map((item) => item.render()).join("");
- getSettingsMenuItems().forEach((item) => item.bind());
+ const items = getSettingsMenuItems();
+ settingsOptions.innerHTML = items.map((item) => item.render()).join("");
+ items.forEach((item) => item.bind());
 }
 
 function updateMusicVolume(value) {
@@ -2555,21 +2576,15 @@ function renderUpgrades() {
  });
 }
 
-function renderUnlockCropButton() {
- unlockCropButton.hidden = true;
-}
-
 function openUpgradeSheet(index) {
  game.selectedUpgradeTileIndex = index;
- upgradeSheet.classList.add("open");
- upgradeSheet.setAttribute("aria-hidden", "false");
+ setOpen(upgradeSheet, true);
  statusText.textContent = `${index + 1}${text.plot}`;
  renderUpgradeOptions();
 }
 
 function closeUpgradeSheet() {
- upgradeSheet.classList.remove("open");
- upgradeSheet.setAttribute("aria-hidden", "true");
+ setOpen(upgradeSheet, false);
  game.selectedUpgradeTileIndex = null;
 }
 
@@ -2689,22 +2704,18 @@ function handleTileClick(index) {
 
 function openCropSheet(index) {
  game.selectedTileIndex = index;
- cropSheet.classList.add("open");
- cropSheet.setAttribute("aria-hidden", "false");
+ setOpen(cropSheet, true);
  statusText.textContent = `${index + 1}${text.plot}\uC5D0 ${text.chooseCrop}`;
  renderCropOptions();
 }
 
 function closeCropSheet() {
- cropSheet.classList.remove("open");
- cropSheet.setAttribute("aria-hidden", "true");
+ setOpen(cropSheet, false);
  game.selectedTileIndex = null;
 }
 
 function openRankingPopup() {
- if (!rankingPopup) return;
- rankingPopup.classList.add("open");
- rankingPopup.setAttribute("aria-hidden", "false");
+ setOpen(rankingPopup, true);
 
  if (typeof window.refreshRankings === "function") {
   window.refreshRankings();
@@ -2714,9 +2725,7 @@ function openRankingPopup() {
 }
 
 function closeRankingPopup() {
- if (!rankingPopup) return;
- rankingPopup.classList.remove("open");
- rankingPopup.setAttribute("aria-hidden", "true");
+ setOpen(rankingPopup, false);
 }
 
 function plantCrop(cropId) {
@@ -2792,14 +2801,12 @@ function showLevelUpPopup(level, messages) {
  window.clearTimeout(ui.levelUpTimer);
  levelUpLevelText.textContent = `Lv.${level}`;
  levelUpUnlockText.textContent = messages.length ? messages.join(" · ") : "\uC0C8 \uB808\uBCA8\uC5D0 \uB3C4\uB2EC\uD588\uC5B4\uC694";
- levelUpPopup.classList.add("open");
- levelUpPopup.setAttribute("aria-hidden", "false");
+ setOpen(levelUpPopup, true);
  ui.levelUpTimer = window.setTimeout(closeLevelUpPopup, 3200);
 }
 
 function closeLevelUpPopup() {
- levelUpPopup.classList.remove("open");
- levelUpPopup.setAttribute("aria-hidden", "true");
+ setOpen(levelUpPopup, false);
 }
 
 document.querySelectorAll("[data-close-sheet]").forEach((button) => {

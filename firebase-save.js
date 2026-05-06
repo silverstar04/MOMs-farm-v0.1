@@ -83,8 +83,7 @@ function initFirebaseSave() {
         }
       })
       .catch((error) => {
-        console.warn("[cloud-save] redirect login failed", error);
-        setStatus("Google \uB85C\uADF8\uC778\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.");
+        setAuthErrorStatus("Google \uB85C\uADF8\uC778\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.", error);
       })
       .finally(() => {
         if (!auth.currentUser) signInAnonymousSafely();
@@ -139,6 +138,29 @@ function clearPendingGoogleLogin() {
   } catch (error) {
     console.warn("[cloud-save] pending google login clear failed", error);
   }
+}
+
+function getAuthErrorText(prefix, error) {
+  const code = error?.code || "unknown";
+  const message = error?.message || "\uC54C \uC218 \uC5C6\uB294 \uC624\uB958";
+  return `${prefix} (${code}) ${message}`;
+}
+
+function setAuthErrorStatus(prefix, error) {
+  console.error("[cloud-save]", prefix, {
+    code: error?.code || "unknown",
+    message: error?.message || "",
+    error,
+  });
+  setStatus(getAuthErrorText(prefix, error));
+}
+
+function shouldPreferRedirectLogin() {
+  const userAgent = navigator.userAgent || "";
+  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(userAgent);
+  return isStandalone || isMobile || isSafari;
 }
 
 function getSaveRef() {
@@ -288,47 +310,89 @@ async function signInWithGoogle() {
   const localSave = window.MomsFarmGameSave?.getSaveData?.();
   setStatus("Google \uB85C\uADF8\uC778 \uC911...");
 
+  if (shouldPreferRedirectLogin()) {
+    await startGoogleRedirect(provider, previousUid, localSave);
+    return;
+  }
+
   try {
-    let result = null;
-    if (auth.currentUser?.isAnonymous) {
-      result = await linkWithPopup(auth.currentUser, provider);
-      setStatus("Google \uACC4\uC815\uC73C\uB85C \uC5F0\uB3D9\uD588\uC5B4\uC694.");
-    } else {
-      result = await signInWithPopup(auth, provider);
-      setStatus("Google \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uD588\uC5B4\uC694.");
-    }
-    handleGoogleLoginResult(result?.user, previousUid, localSave);
+    await startGooglePopup(provider, previousUid, localSave);
   } catch (error) {
     console.warn("[cloud-save] google popup/link failed", error);
     if (shouldUseRedirect(error)) {
-      setStatus("Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD560\uAC8C\uC694.");
-      try {
-        rememberPendingGoogleLogin(previousUid, localSave);
-        if (auth.currentUser?.isAnonymous) {
-          await linkWithRedirect(auth.currentUser, provider);
-        } else {
-          await signInWithRedirect(auth, provider);
-        }
-      } catch (redirectError) {
-        console.warn("[cloud-save] google redirect failed", redirectError);
-        setStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uC774 \uAE30\uAE30 \uC800\uC7A5\uC740 \uACC4\uC18D \uC0AC\uC6A9\uD560 \uC218 \uC788\uC5B4\uC694.");
-      }
+      console.warn("[cloud-save] switching to google redirect", {
+        code: error?.code || "unknown",
+        message: error?.message || "",
+        error,
+      });
+      setStatus(getAuthErrorText("\uD31D\uC5C5\uC774 \uCC28\uB2E8\uB418\uC5B4 Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD560\uAC8C\uC694.", error));
+      await startGoogleRedirect(provider, previousUid, localSave);
       return;
     }
 
     if (isCredentialConflict(error)) {
       try {
-        const result = await signInWithPopup(auth, provider);
-        setStatus("Google \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uD588\uC5B4\uC694.");
-        handleGoogleLoginResult(result?.user, previousUid, localSave);
+        await startGooglePopup(provider, previousUid, localSave, true);
       } catch (signInError) {
-        console.warn("[cloud-save] google sign-in after conflict failed", signInError);
-        setStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.");
+        if (shouldUseRedirect(signInError)) {
+          console.warn("[cloud-save] switching conflict sign-in to google redirect", {
+            code: signInError?.code || "unknown",
+            message: signInError?.message || "",
+            error: signInError,
+          });
+          setStatus(getAuthErrorText("\uD31D\uC5C5\uC774 \uCC28\uB2E8\uB418\uC5B4 Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD560\uAC8C\uC694.", signInError));
+          await startGoogleRedirect(provider, previousUid, localSave, true);
+        } else {
+          setAuthErrorStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.", signInError);
+        }
       }
       return;
     }
 
-    setStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.");
+    setAuthErrorStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.", error);
+  }
+}
+
+async function startGooglePopup(provider, previousUid, localSave, forceSignIn = false) {
+  let result = null;
+  if (auth.currentUser?.isAnonymous && !forceSignIn) {
+    result = await linkWithPopup(auth.currentUser, provider);
+    setStatus("Google \uACC4\uC815\uC73C\uB85C \uC5F0\uB3D9\uD588\uC5B4\uC694.");
+  } else {
+    result = await signInWithPopup(auth, provider);
+    setStatus("Google \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uD588\uC5B4\uC694.");
+  }
+  handleGoogleLoginResult(result?.user, previousUid, localSave);
+}
+
+async function startGoogleRedirect(provider, previousUid, localSave, forceSignIn = false) {
+  setStatus("Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD560\uAC8C\uC694.");
+  rememberPendingGoogleLogin(previousUid, localSave);
+  try {
+    if (auth.currentUser?.isAnonymous && !forceSignIn) {
+      await linkWithRedirect(auth.currentUser, provider);
+    } else {
+      await signInWithRedirect(auth, provider);
+    }
+  } catch (error) {
+    if (auth.currentUser?.isAnonymous && !forceSignIn) {
+      console.warn("[cloud-save] google link redirect failed, trying sign-in redirect", {
+        code: error?.code || "unknown",
+        message: error?.message || "",
+        error,
+      });
+      setStatus(getAuthErrorText("Google \uACC4\uC815 \uC5F0\uB3D9\uC774 \uC548 \uB3FC\uC11C Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uB2E4\uC2DC \uC774\uB3D9\uD560\uAC8C\uC694.", error));
+      try {
+        await signInWithRedirect(auth, provider);
+        return;
+      } catch (signInError) {
+        clearPendingGoogleLogin();
+        setAuthErrorStatus("Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.", signInError);
+        return;
+      }
+    }
+    clearPendingGoogleLogin();
+    setAuthErrorStatus("Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uAC8C\uC784\uC740 \uACC4\uC18D\uD560 \uC218 \uC788\uC5B4\uC694.", error);
   }
 }
 
