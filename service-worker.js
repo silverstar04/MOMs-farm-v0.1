@@ -1,4 +1,4 @@
-const CACHE_NAME = "moms-farm-pwa-v3";
+const CACHE_NAME = "moms-farm-pwa-v7";
 
 const CORE_ASSETS = [
   "./",
@@ -34,9 +34,12 @@ const CORE_ASSETS = [
   "./assets/animal-products/egg.png",
   "./assets/animal-products/milk.png",
   "./assets/products/flour.png",
-  "./assets/products/feedstuff_cow.png",
-  "./assets/products/feedstuff_hen.png",
+  "./assets/products/wheat_feed.png",
+  "./assets/products/corn_feed.png",
   "./assets/products/bread.png",
+  "./assets/products/corn_flour.png",
+  "./assets/products/cornbread.png",
+  "./assets/products/pancake.png",
   "./assets/buildings/windmill.png",
   "./assets/buildings/feedmill.png",
   "./assets/buildings/bakery.png",

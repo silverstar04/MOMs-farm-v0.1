@@ -36,6 +36,7 @@ let saveTimer = null;
 let latestQueuedSave = null;
 let initialized = false;
 let lastCheckedUid = null;
+let handlingGoogleLogin = false;
 
 function initFirebaseSave() {
   if (initialized) return;
@@ -64,9 +65,13 @@ function initFirebaseSave() {
       status.isAnonymous = user.isAnonymous;
       status.provider = getUserProvider(user);
       setStatus(user.isAnonymous ? "\uC775\uBA85 \uACC4\uC815\uC73C\uB85C \uC5F0\uACB0\uB410\uC5B4\uC694." : "Google \uACC4\uC815\uC73C\uB85C \uC5F0\uACB0\uB410\uC5B4\uC694.");
+      if (handlingGoogleLogin) {
+        renderStatus();
+        return;
+      }
       if (lastCheckedUid !== user.uid) {
         lastCheckedUid = user.uid;
-        checkInitialCloudSave();
+        checkInitialCloudSave(user.uid);
       } else {
         renderStatus();
       }
@@ -163,13 +168,13 @@ function shouldPreferRedirectLogin() {
   return isStandalone || isMobile || isSafari;
 }
 
-function getSaveRef() {
-  if (!db || !status.uid) return null;
-  return doc(db, ...saveDocPath(status.uid));
+function getSaveRef(uid = status.uid) {
+  if (!db || !uid) return null;
+  return doc(db, ...saveDocPath(uid));
 }
 
-async function getCloudSave() {
-  const saveRef = getSaveRef();
+async function getCloudSave(uid = status.uid) {
+  const saveRef = getSaveRef(uid);
   if (!saveRef) return null;
 
   const snapshot = await getDoc(saveRef);
@@ -177,9 +182,9 @@ async function getCloudSave() {
   return snapshot.data();
 }
 
-async function checkInitialCloudSave() {
+async function checkInitialCloudSave(uid = status.uid) {
   try {
-    const cloudSave = await getCloudSave();
+    const cloudSave = await getCloudSave(uid);
     if (!cloudSave?.saveData) {
       setStatus("\uC544\uC9C1 \uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5\uC774 \uC5C6\uC5B4\uC694.");
       renderStatus();
@@ -413,22 +418,37 @@ function isCredentialConflict(error) {
   ].includes(error?.code);
 }
 
-function handleGoogleLoginResult(user, previousUid, localSave) {
+async function handleGoogleLoginResult(user, previousUid, localSave) {
   if (!user) return;
+  handlingGoogleLogin = true;
   status.uid = user.uid;
   status.signedIn = true;
   status.isAnonymous = user.isAnonymous;
   status.provider = getUserProvider(user);
+  lastCheckedUid = user.uid;
   renderStatus();
 
-  if (previousUid && previousUid !== user.uid && localSave) {
-    openCloudConfirm(
-      "Google \uACC4\uC815\uC73C\uB85C \uBC14\uB00C\uC5C8\uC5B4\uC694. \uD604\uC7AC \uC774 \uAE30\uAE30 \uC800\uC7A5\uC744 Google \uACC4\uC815 \uD074\uB77C\uC6B0\uB4DC\uB85C \uC62E\uAE38\uAE4C\uC694?",
-      () => saveNow(localSave),
-    );
-  }
+  try {
+    const cloudSave = await getCloudSave(user.uid);
+    if (cloudSave?.saveData) {
+      setStatus("Google \uACC4\uC815\uC758 \uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5\uC744 \uCC3E\uC558\uC5B4\uC694.");
+      await checkInitialCloudSave(user.uid);
+      return;
+    }
 
-  checkInitialCloudSave();
+    setStatus("Google \uACC4\uC815\uC5D0\uB294 \uC544\uC9C1 \uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5\uC774 \uC5C6\uC5B4\uC694.");
+    if (previousUid && previousUid !== user.uid && localSave) {
+      openCloudConfirm(
+        "Google \uACC4\uC815\uC5D0 \uC800\uC7A5\uB41C \uB0B4\uC6A9\uC774 \uC5C6\uC5B4\uC694. \uD604\uC7AC \uC774 \uAE30\uAE30 \uC800\uC7A5\uC744 Google \uACC4\uC815 \uD074\uB77C\uC6B0\uB4DC\uB85C \uC62E\uAE38\uAE4C\uC694?",
+        () => saveNow(localSave),
+      );
+    }
+  } catch (error) {
+    console.warn("[cloud-save] google cloud save check failed", error);
+    setStatus("\uB85C\uADF8\uC778\uC740 \uB410\uC9C0\uB9CC Google \uD074\uB77C\uC6B0\uB4DC \uC800\uC7A5\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694.");
+  } finally {
+    handlingGoogleLogin = false;
+  }
 }
 
 async function signOutGoogle() {

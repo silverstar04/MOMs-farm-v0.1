@@ -186,64 +186,94 @@ const cropProgression = [
 const products = [
  {
   id: "flour",
- name: "\uBC00\uAC00\uB8E8",
- image: "assets/products/flour.png",
- sellPrice: 10,
- minPrice: 8,
- maxPrice: 13,
- marketSwing: 0.12,
- oversupplyBase: 18,
-},
-{
- id: "cowFeed",
- name: "\uC18C \uC0AC\uB8CC",
- image: "assets/products/feedstuff_cow.png",
- sellPrice: 8,
- minPrice: 6,
- maxPrice: 10,
- marketSwing: 0.1,
- oversupplyBase: 22,
-},
-{
- id: "henFeed",
- name: "\uB2ED \uC0AC\uB8CC",
- image: "assets/products/feedstuff_hen.png",
- sellPrice: 9,
- minPrice: 7,
- maxPrice: 11,
- marketSwing: 0.1,
- oversupplyBase: 24,
-},
-{
- id: "bread",
- name: "\uBE75",
- image: "assets/products/bread.png",
- sellPrice: 42,
- minPrice: 32,
- maxPrice: 56,
- marketSwing: 0.14,
- oversupplyBase: 8,
-},
-{
- id: "egg",
- name: "\uB2EC\uAC40",
- image: "assets/animal-products/egg.png",
- sellPrice: 22,
- minPrice: 16,
- maxPrice: 30,
- marketSwing: 0.12,
- oversupplyBase: 12,
-},
-{
- id: "milk",
- name: "\uC6B0\uC720",
- image: "assets/animal-products/milk.png",
- sellPrice: 34,
- minPrice: 26,
- maxPrice: 46,
- marketSwing: 0.1,
- oversupplyBase: 8,
-},
+  name: "\uBC00\uAC00\uB8E8",
+  image: "assets/products/flour.png",
+  sellPrice: 10,
+  minPrice: 8,
+  maxPrice: 13,
+  marketSwing: 0.12,
+  oversupplyBase: 18,
+ },
+ {
+  id: "wheatFeed",
+  name: "\uBC00 \uC0AC\uB8CC",
+  image: "assets/products/wheat_feed.png",
+  sellPrice: 8,
+  minPrice: 6,
+  maxPrice: 10,
+  marketSwing: 0.1,
+  oversupplyBase: 22,
+ },
+ {
+  id: "cornFeed",
+  name: "\uC625\uC218\uC218 \uC0AC\uB8CC",
+  image: "assets/products/corn_feed.png",
+  sellPrice: 9,
+  minPrice: 7,
+  maxPrice: 11,
+  marketSwing: 0.1,
+  oversupplyBase: 24,
+ },
+ {
+  id: "bread",
+  name: "\uBE75",
+  image: "assets/products/bread.png",
+  sellPrice: 42,
+  minPrice: 32,
+  maxPrice: 56,
+  marketSwing: 0.14,
+  oversupplyBase: 8,
+ },
+ {
+  id: "cornFlour",
+  name: "\uC625\uC218\uC218\uAC00\uB8E8",
+  image: "assets/products/corn_flour.png",
+  sellPrice: 12,
+  minPrice: 9,
+  maxPrice: 16,
+  marketSwing: 0.12,
+  oversupplyBase: 18,
+ },
+ {
+  id: "cornbread",
+  name: "\uC625\uC218\uC218\uBE75",
+  image: "assets/products/cornbread.png",
+  sellPrice: 48,
+  minPrice: 36,
+  maxPrice: 64,
+  marketSwing: 0.14,
+  oversupplyBase: 8,
+ },
+ {
+  id: "pancake",
+  name: "\uD32C\uCF00\uC774\uD06C",
+  image: "assets/products/pancake.png",
+  sellPrice: 95,
+  minPrice: 72,
+  maxPrice: 125,
+  marketSwing: 0.16,
+  oversupplyBase: 5,
+ },
+ {
+  id: "egg",
+  name: "\uB2EC\uAC40",
+  image: "assets/animal-products/egg.png",
+  sellPrice: 22,
+  minPrice: 16,
+  maxPrice: 30,
+  marketSwing: 0.12,
+  oversupplyBase: 12,
+ },
+ {
+  id: "milk",
+  name: "\uC6B0\uC720",
+  image: "assets/animal-products/milk.png",
+  sellPrice: 34,
+  minPrice: 26,
+  maxPrice: 46,
+  marketSwing: 0.1,
+  oversupplyBase: 8,
+ },
 ];
 const animals = [
  {
@@ -251,7 +281,7 @@ const animals = [
   name: "\uB2ED",
   image: "assets/animals/hen.png",
   cost: 140,
-  feedId: "henFeed",
+  feedId: "cornFeed",
   productId: "egg",
   productionSeconds: 28,
  },
@@ -260,7 +290,7 @@ const animals = [
   name: "\uC18C",
   image: "assets/animals/cow.png",
   cost: 220,
-  feedId: "cowFeed",
+  feedId: "wheatFeed",
   productId: "milk",
   productionSeconds: 40,
  },
@@ -271,21 +301,21 @@ const processingBuildings = [
   name: "\uD48D\uCC28",
   image: "assets/buildings/windmill.png",
   cost: 120,
-  recipeIds: ["flour"],
+  recipeIds: ["flour", "cornFlour"],
  },
  {
   id: "feedmill",
   name: "\uC0AC\uB8CC\uACF5\uC7A5",
   image: "assets/buildings/feedmill.png",
- cost: 160,
-  recipeIds: ["cowFeed", "henFeed"],
+  cost: 160,
+  recipeIds: ["wheatFeed", "cornFeed"],
  },
  {
   id: "bakery",
   name: "\uBCA0\uC774\uCEE4\uB9AC",
   image: "assets/buildings/bakery.png",
   cost: 260,
-  recipeIds: ["bread"],
+  recipeIds: ["bread", "cornbread", "pancake"],
  },
 ];
 const processingRecipes = [
@@ -295,24 +325,33 @@ const processingRecipes = [
   inputId: "wheat",
   inputQuantity: 2,
   outputId: "flour",
-  outputQuantity: 1,
+  outputQuantity: 3,
   seconds: 20,
  },
  {
-  id: "cowFeed",
+  id: "cornFlour",
+  buildingId: "windmill",
+  inputId: "corn",
+  inputQuantity: 2,
+  outputId: "cornFlour",
+  outputQuantity: 3,
+  seconds: 22,
+ },
+ {
+  id: "wheatFeed",
   buildingId: "feedmill",
   inputId: "wheat",
   inputQuantity: 2,
-  outputId: "cowFeed",
+  outputId: "wheatFeed",
   outputQuantity: 1,
   seconds: 24,
  },
  {
-  id: "henFeed",
+  id: "cornFeed",
   buildingId: "feedmill",
   inputId: "corn",
   inputQuantity: 2,
-  outputId: "henFeed",
+  outputId: "cornFeed",
   outputQuantity: 1,
   seconds: 24,
  },
@@ -325,7 +364,32 @@ const processingRecipes = [
   outputQuantity: 1,
   seconds: 45,
  },
+ {
+  id: "cornbread",
+  buildingId: "bakery",
+  inputId: "cornFlour",
+  inputQuantity: 2,
+  outputId: "cornbread",
+  outputQuantity: 1,
+  seconds: 50,
+ },
+ {
+  id: "pancake",
+  buildingId: "bakery",
+  inputs: [
+   { id: "flour", quantity: 1 },
+   { id: "milk", quantity: 1 },
+   { id: "egg", quantity: 1 },
+  ],
+  outputId: "pancake",
+  outputQuantity: 1,
+  seconds: 70,
+ },
 ];
+const legacyItemIds = {
+ cowFeed: "wheatFeed",
+ henFeed: "cornFeed",
+};
 const levelUnlocks = [
  ...cropProgression.map((cropStep) => ({
   level: cropStep.unlockLevel,
@@ -550,6 +614,23 @@ function getOversupplyThreshold(item, tier) {
  return tier === 2 ? baseThreshold * 2 : baseThreshold;
 }
 
+function getCurrentItemId(itemId) {
+ return legacyItemIds[itemId] || itemId;
+}
+
+function getSavedItemCount(source, itemId) {
+ if (!source || typeof source !== "object") return 0;
+
+ const itemIds = [itemId, ...Object.entries(legacyItemIds)
+  .filter(([, currentId]) => currentId === itemId)
+  .map(([legacyId]) => legacyId)];
+
+ return itemIds.reduce((total, savedItemId) => {
+  const count = Math.floor(Number(source[savedItemId]));
+  return total + (Number.isFinite(count) ? Math.max(0, count) : 0);
+ }, 0);
+}
+
 function sanitizeSalesHistory(salesHistory) {
  const cleanHistory = {};
 
@@ -562,8 +643,7 @@ function sanitizeSalesHistory(salesHistory) {
 
   cleanHistory[dateKey] = {};
   getAllInventoryItems().forEach((item) => {
-   const count = Math.floor(Number(sales[item.id]));
-   cleanHistory[dateKey][item.id] = Number.isFinite(count) ? Math.max(0, count) : 0;
+   cleanHistory[dateKey][item.id] = getSavedItemCount(sales, item.id);
   });
  });
 
@@ -578,11 +658,12 @@ function sanitizeDaily(daily, salesHistory) {
  const weather = getWeather(daily.weatherId) || weatherTypes[0];
  const prices = {};
  const oversuppliedCropIds = Array.isArray(daily.oversuppliedCropIds)
-  ? daily.oversuppliedCropIds.filter((itemId) => getInventoryItem(itemId))
+  ? [...new Set(daily.oversuppliedCropIds.map(getCurrentItemId).filter((itemId) => getInventoryItem(itemId)))]
   : [];
 
  getAllInventoryItems().forEach((item) => {
-  const savedPrice = Number(daily.prices?.[item.id]);
+  const legacyId = Object.entries(legacyItemIds).find(([, currentId]) => currentId === item.id)?.[0];
+  const savedPrice = Number(daily.prices?.[item.id] ?? daily.prices?.[legacyId]);
   prices[item.id] = Number.isFinite(savedPrice)
    ? Math.min(item.maxPrice, Math.max(item.minPrice, Math.round(savedPrice)))
    : item.sellPrice;
@@ -668,7 +749,8 @@ function sanitizeProcessingSlot(slot) {
  }
 
  const building = getProcessingBuilding(slot.buildingId);
- const recipe = getProcessingRecipe(slot.recipeId);
+ const recipeId = getCurrentItemId(slot.recipeId);
+ const recipe = getProcessingRecipe(recipeId);
 
  if (!building) {
   return createEmptyProcessingSlot();
@@ -719,8 +801,7 @@ function sanitizeInventory(inventory) {
  const cleanInventory = createEmptyInventory();
 
  getAllInventoryItems().forEach((item) => {
-  const count = inventory && Number(inventory[item.id]);
-  cleanInventory[item.id] = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  cleanInventory[item.id] = getSavedItemCount(inventory, item.id);
  });
 
  return cleanInventory;
@@ -1186,8 +1267,13 @@ function getProcessingOutputQuantity(recipe, repeatCount) {
  return recipe.outputQuantity * repeatCount;
 }
 
-function getProcessingInputQuantity(recipe, repeatCount) {
- return recipe.inputQuantity * repeatCount;
+function getProcessingInputs(recipe, repeatCount) {
+ const inputs = recipe.inputs || [{ id: recipe.inputId, quantity: recipe.inputQuantity }];
+ return inputs.map((input) => ({
+  item: getInventoryItem(input.id),
+  id: input.id,
+  quantity: input.quantity * repeatCount,
+ }));
 }
 
 function getProcessingTotalSeconds(recipe, repeatCount) {
@@ -1975,12 +2061,11 @@ function renderProcessingOptions() {
 
  building.recipeIds.forEach((recipeId) => {
   const itemRecipe = getProcessingRecipe(recipeId);
-  const input = getInventoryItem(itemRecipe.inputId);
   const output = getProduct(itemRecipe.outputId);
-  const inputQuantity = getProcessingInputQuantity(itemRecipe, repeatCount);
+  const inputs = getProcessingInputs(itemRecipe, repeatCount);
   const outputQuantity = getProcessingOutputQuantity(itemRecipe, repeatCount);
   const totalSeconds = getProcessingTotalSeconds(itemRecipe, repeatCount);
-  const hasInput = (game.inventory[itemRecipe.inputId] || 0) >= inputQuantity;
+  const hasInput = inputs.every((input) => (game.inventory[input.id] || 0) >= input.quantity);
   const button = document.createElement("button");
   button.className = `crop-option${hasInput ? "" : " unaffordable"}`;
   button.type = "button";
@@ -1988,7 +2073,7 @@ function renderProcessingOptions() {
    <span class="crop-icon">${itemImage(output, "crop-option-image")}</span>
    <span class="crop-text">
     <strong>${output.name} x${outputQuantity} ${text.make}</strong>
-    <span>${text.need}: ${input.name} ${inputQuantity}\uAC1C</span>
+    <span>${text.need}: ${inputs.map((input) => `${input.item.name} ${input.quantity}\uAC1C`).join(" · ")}</span>
     <span>${text.time}: ${formatDuration(totalSeconds)}</span>
    </span>
    <span class="crop-price">${text.processing}</span>
@@ -2019,16 +2104,18 @@ function startProcessingRecipe(recipeId) {
  if (index === null || !slot || !recipe) return;
 
  const repeatCount = sanitizeProcessingRepeatCount(ui.processingRepeatCount);
- const inputQuantity = getProcessingInputQuantity(recipe, repeatCount);
+ const inputs = getProcessingInputs(recipe, repeatCount);
  const totalSeconds = getProcessingTotalSeconds(recipe, repeatCount);
 
- if ((game.inventory[recipe.inputId] || 0) < inputQuantity) {
+ if (!inputs.every((input) => (game.inventory[input.id] || 0) >= input.quantity)) {
   statusText.textContent = "\uC7AC\uB8CC\uAC00 \uBD80\uC871\uD574\uC694";
   return;
  }
 
  const now = Date.now();
- game.inventory[recipe.inputId] -= inputQuantity;
+ inputs.forEach((input) => {
+  game.inventory[input.id] -= input.quantity;
+ });
  game.processingSlots[index] = {
   ...slot,
   recipeId,
@@ -2210,7 +2297,7 @@ function updateMusicVolume(value) {
 }
 
 window.MomsFarmGameSave = {
- getSaveData: () => getLocalSaveData() || createSaveData(game.clientUpdatedAt || Date.now()),
+ getSaveData: () => createSaveData(game.clientUpdatedAt || Date.now()),
  getLocalUpdatedAt: () => Number(getLocalSaveData()?.clientUpdatedAt || game.clientUpdatedAt || 0),
  applySaveData,
  saveNow: () => saveGame(),
