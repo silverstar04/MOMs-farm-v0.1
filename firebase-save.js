@@ -162,10 +162,26 @@ function setAuthErrorStatus(prefix, error) {
 
 function shouldPreferRedirectLogin() {
   const userAgent = navigator.userAgent || "";
-  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
   const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(userAgent);
-  return isStandalone || isMobile || isSafari;
+  return !isIosStandalone() && (isMobile || isSafari);
+}
+
+function isIosStandalone() {
+  const userAgent = navigator.userAgent || "";
+  const isIos = /iPhone|iPad|iPod/i.test(userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
+  return isIos && isStandalone;
+}
+
+function isBlockedMobileLoginError(error) {
+  const message = `${error?.code || ""} ${error?.message || ""}`.toLowerCase();
+  return message.includes("disallowed_useragent") || message.includes("disallowed useragent");
+}
+
+function showBrowserLoginGuide(error = null) {
+  const errorText = error ? `\n\n오류: ${error?.code || "unknown"} ${error?.message || ""}` : "";
+  setStatus(`iPhone 홈 화면 앱에서는 Google 로그인이 막힐 수 있어요. Safari에서 Mom's Farm을 열어 Google 로그인한 뒤 다시 앱을 열어주세요.${errorText}`);
 }
 
 function getSaveRef(uid = status.uid) {
@@ -315,6 +331,30 @@ async function signInWithGoogle() {
   const localSave = window.MomsFarmGameSave?.getSaveData?.();
   setStatus("Google \uB85C\uADF8\uC778 \uC911...");
 
+  if (isIosStandalone()) {
+    try {
+      await startGooglePopup(provider, previousUid, localSave);
+      return;
+    } catch (error) {
+      console.warn("[cloud-save] ios pwa google popup failed", {
+        code: error?.code || "unknown",
+        message: error?.message || "",
+        error,
+      });
+      if (isBlockedMobileLoginError(error)) {
+        showBrowserLoginGuide(error);
+        return;
+      }
+      if (!shouldUseRedirect(error)) {
+        setAuthErrorStatus("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. Safari\uC5D0\uC11C \uC811\uC18D\uD574 \uB85C\uADF8\uC778\uD574\uBCF4\uC138\uC694.", error);
+        return;
+      }
+      setStatus(getAuthErrorText("\uD31D\uC5C5\uC774 \uC5F4\uB9AC\uC9C0 \uC54A\uC544 Google \uB85C\uADF8\uC778 \uD654\uBA74\uC73C\uB85C \uC774\uB3D9\uD560\uAC8C\uC694.", error));
+      await startGoogleRedirect(provider, previousUid, localSave);
+      return;
+    }
+  }
+
   if (shouldPreferRedirectLogin()) {
     await startGoogleRedirect(provider, previousUid, localSave);
     return;
@@ -325,6 +365,10 @@ async function signInWithGoogle() {
   } catch (error) {
     console.warn("[cloud-save] google popup/link failed", error);
     if (shouldUseRedirect(error)) {
+      if (isBlockedMobileLoginError(error)) {
+        showBrowserLoginGuide(error);
+        return;
+      }
       console.warn("[cloud-save] switching to google redirect", {
         code: error?.code || "unknown",
         message: error?.message || "",
@@ -339,6 +383,10 @@ async function signInWithGoogle() {
       try {
         await startGooglePopup(provider, previousUid, localSave, true);
       } catch (signInError) {
+        if (isBlockedMobileLoginError(signInError)) {
+          showBrowserLoginGuide(signInError);
+          return;
+        }
         if (shouldUseRedirect(signInError)) {
           console.warn("[cloud-save] switching conflict sign-in to google redirect", {
             code: signInError?.code || "unknown",
